@@ -1,0 +1,35 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "es2022", // es2017 | es2020 | es2022 | esnext
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+
+    /* Modules */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "~utils/*": ["./src/utils/*"],
+    },
+    "resolveJsonModule": true,
+
+    /* Emit */
+    "outDir": "./dist",
+    "sourceMap": true,
+    "removeComments": false,
+
+    /* Type Checking */
+    "strict": true,
+    "noUnusedLocals": true,
+    "maxNodeModuleJsDepth": 0,
+    "skipLibCheck": true, // acelera o build
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+  ],
+  "exclude": ["node_modules", "dist"],
+}

@@ -119,7 +119,7 @@ public struct DataHora: Hashable, Sendable {
 // MARK: - Valores
 
 public enum TipoValor: String, Sendable {
-    case texto, inteiro, decimal, booleano, dataHora, dataHoraLocal, data, hora, lista, tabela
+    case texto, inteiro, decimal, booleano, dataHora, dataHoraLocal, data, hora, lista, tabela, nulo
 
     /// Nome curto em português para a interface.
     public var nome: String {
@@ -134,11 +134,12 @@ public enum TipoValor: String, Sendable {
         case .hora: return "hora"
         case .lista: return "lista"
         case .tabela: return "tabela"
+        case .nulo: return "nulo"
         }
     }
 }
 
-/// Um valor TOML já interpretado.
+/// Um valor já interpretado (TOML ou JSON). `nulo` só existe em JSON.
 public indirect enum Valor: Sendable, Hashable {
     case texto(String)
     case inteiro(Int64)
@@ -147,6 +148,8 @@ public indirect enum Valor: Sendable, Hashable {
     case dataHora(DataHora)
     case lista([Valor])
     case tabela(Tabela)
+    /// `null` do JSON.
+    case nulo
 
     public var tipo: TipoValor {
         switch self {
@@ -163,6 +166,7 @@ public indirect enum Valor: Sendable, Hashable {
             }
         case .lista: return .lista
         case .tabela: return .tabela
+        case .nulo: return .nulo
         }
     }
 
@@ -177,6 +181,7 @@ public indirect enum Valor: Sendable, Hashable {
         case (.dataHora(let x), .dataHora(let y)): return x.equivalente(y)
         case (.lista(let x), .lista(let y)): return x == y
         case (.tabela(let x), .tabela(let y)): return x == y
+        case (.nulo, .nulo): return true
         default: return false
         }
     }
@@ -190,6 +195,7 @@ public indirect enum Valor: Sendable, Hashable {
         case .dataHora(let d): h.combine(4); h.combine(d.iso)
         case .lista(let l): h.combine(5); h.combine(l)
         case .tabela(let t): h.combine(6); h.combine(t)
+        case .nulo: h.combine(7)
         }
     }
 }
@@ -244,8 +250,19 @@ public struct Tabela: Sendable, Hashable {
     public func hash(into h: inout Hasher) { h.combine(pares.count) }
 
     /// Valor no caminho indicado (chaves e índices de `[[lista]]`).
+    public func valor(em caminho: Caminho) -> Valor? { Valor.tabela(self).valor(em: caminho) }
+
+    /// Cópia com o valor do caminho trocado. Devolve `nil` se o caminho não existir.
+    public func substituindo(_ caminho: Caminho, por novo: Valor) -> Tabela? {
+        guard case .tabela(let t)? = Valor.tabela(self).substituindo(caminho, por: novo) else { return nil }
+        return t
+    }
+}
+
+extension Valor {
+    /// Valor no caminho indicado; caminho vazio é o próprio valor.
     public func valor(em caminho: Caminho) -> Valor? {
-        var atual: Valor = .tabela(self)
+        var atual = self
         for seg in caminho {
             switch (seg, atual) {
             case (.chave(let k), .tabela(let t)):
@@ -261,10 +278,10 @@ public struct Tabela: Sendable, Hashable {
         return atual
     }
 
-    /// Cópia com o valor do caminho trocado. Devolve `nil` se o caminho não existir.
-    public func substituindo(_ caminho: Caminho, por novo: Valor) -> Tabela? {
-        guard case .tabela(let t)? = Tabela.troca(.tabela(self), caminho[...], novo) else { return nil }
-        return t
+    /// Cópia com o valor do caminho trocado (caminho vazio troca o valor inteiro).
+    /// Devolve `nil` se o caminho não existir.
+    public func substituindo(_ caminho: Caminho, por novo: Valor) -> Valor? {
+        Valor.troca(self, caminho[...], novo)
     }
 
     private static func troca(_ atual: Valor, _ resto: ArraySlice<Segmento>, _ novo: Valor) -> Valor? {
@@ -321,37 +338,68 @@ public struct Entrada: Sendable {
     public var comentarioAcima: [String]
     /// Comentário no fim da linha, se houver.
     public var comentarioFim: String?
-    /// Índice em `DocumentoTOML.cabecalhos` da seção onde a linha está (`nil` = raiz).
+    /// Índice em `DocumentoConf.cabecalhos` da seção onde a linha está (`nil` = raiz).
     public var secao: Int?
 }
 
-/// Um cabeçalho `[tabela]` ou `[[lista de tabelas]]`.
+/// Uma seção do arquivo: em TOML, um cabeçalho `[tabela]` ou `[[lista de tabelas]]`;
+/// em JSON, um objeto `{…}` aninhado ou um objeto dentro de uma lista de objetos.
 public struct Cabecalho: Sendable {
     /// Caminho concreto da tabela (com índice para itens de `[[lista]]`).
     public var caminho: Caminho
     /// Nomes do cabeçalho, sem índices.
     public var nomes: [String]
     public var ehListaDeTabelas: Bool
-    /// Intervalo de bytes do cabeçalho inteiro, colchetes incluídos.
+    /// Intervalo de bytes do cabeçalho inteiro, colchetes incluídos (em JSON, o objeto `{…}`).
     public var intervalo: Range<Int>
     public var linha: Int
     public var comentarioAcima: [String]
     public var comentarioFim: String?
 }
 
-/// Resultado da leitura de um arquivo TOML.
-public struct DocumentoTOML: Sendable {
+/// Resultado da leitura de um arquivo (TOML ou JSON).
+public struct DocumentoConf: Sendable {
+    public var formato: Formato
     /// Bytes exatamente como foram lidos.
     public var bytes: [UInt8]
-    /// Os valores do arquivo.
-    public var raiz: Tabela
-    /// Cada `chave = valor`, na ordem do arquivo.
+    /// O valor do arquivo inteiro: em TOML sempre uma tabela; em JSON, qualquer valor.
+    public var valorRaiz: Valor
+    /// Cada `chave = valor` (em JSON, cada membro de objeto que não é seção), na ordem do arquivo.
     public var entradas: [Entrada]
-    /// Cada cabeçalho, na ordem do arquivo.
+    /// Cada seção (cabeçalho TOML ou objeto JSON), na ordem do arquivo.
     public var cabecalhos: [Cabecalho]
     /// `"\r\n"` se a primeira quebra de linha do arquivo for CRLF; senão `"\n"`.
     public var quebraDeLinha: String
     public var temBOM: Bool
+    /// JSON com comentários ou vírgula final (JSONC). Sempre `false` em TOML.
+    public var usaExtensoesJSONC = false
+
+    public init(formato: Formato = .toml, bytes: [UInt8], raiz: Valor, entradas: [Entrada], cabecalhos: [Cabecalho],
+                quebraDeLinha: String, temBOM: Bool, usaExtensoesJSONC: Bool = false) {
+        self.formato = formato
+        self.bytes = bytes
+        self.valorRaiz = raiz
+        self.entradas = entradas
+        self.cabecalhos = cabecalhos
+        self.quebraDeLinha = quebraDeLinha
+        self.temBOM = temBOM
+        self.usaExtensoesJSONC = usaExtensoesJSONC
+    }
+
+    public init(bytes: [UInt8], raiz: Tabela, entradas: [Entrada], cabecalhos: [Cabecalho],
+                quebraDeLinha: String, temBOM: Bool) {
+        self.init(formato: .toml, bytes: bytes, raiz: .tabela(raiz), entradas: entradas, cabecalhos: cabecalhos,
+                  quebraDeLinha: quebraDeLinha, temBOM: temBOM)
+    }
+
+    /// A raiz como tabela (vazia quando a raiz de um JSON não é objeto).
+    public var raiz: Tabela {
+        if case .tabela(let t) = valorRaiz { return t }
+        return Tabela()
+    }
+
+    /// Nome do formato como aparece na tela: "TOML", "JSON" ou "JSONC".
+    public var nomeFormato: String { usaExtensoesJSONC ? "JSONC" : formato.nome }
 
     /// Entrada pelo caminho exato.
     public func entrada(_ caminho: Caminho) -> Entrada? {
@@ -364,14 +412,21 @@ public struct DocumentoTOML: Sendable {
     }
 }
 
+/// Nome antigo, de quando só havia TOML.
+public typealias DocumentoTOML = DocumentoConf
+
 /// Erro de leitura com posição (linha e coluna começam em 1; coluna conta caracteres).
-public struct ErroTOML: Error, Sendable, CustomStringConvertible, LocalizedError {
+public struct ErroLeitura: Error, Sendable, CustomStringConvertible, LocalizedError {
     public var mensagem: String
     public var linha: Int
     public var coluna: Int
     /// Deslocamento em bytes no texto.
     public var deslocamento: Int
+    public var formato: Formato = .toml
 
     public var description: String { "linha \(linha), coluna \(coluna): \(mensagem)" }
-    public var errorDescription: String? { "TOML inválido na \(description)" }
+    public var errorDescription: String? { "\(formato.nome) inválido na \(description)" }
 }
+
+/// Nome antigo, de quando só havia TOML.
+public typealias ErroTOML = ErroLeitura

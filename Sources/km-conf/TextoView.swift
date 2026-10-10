@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import ConfCore
 
-/// Modo Texto: o arquivo inteiro editável. Só é aplicado ao documento se for TOML válido.
+/// Modo Texto: o arquivo inteiro editável. Só é aplicado ao documento se for válido no formato.
 struct TextoView: View {
     @Bindable var modelo: ModeloJanela
 
@@ -25,7 +25,7 @@ struct TextoView: View {
             }
             .padding(.horizontal, 16).padding(.vertical, 10)
 
-            EditorTexto(texto: $modelo.rascunho, linhaErro: modelo.erroRascunho?.linha)
+            EditorTexto(texto: $modelo.rascunho, linhaErro: modelo.erroRascunho?.linha, formato: modelo.formato)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(.separator, lineWidth: 0.5))
                 .padding(.horizontal, 12)
 
@@ -37,10 +37,14 @@ struct TextoView: View {
                         .textSelection(.enabled)
                 } else if modelo.rascunhoDifere {
                     Image(systemName: "checkmark.circle").foregroundStyle(.green)
-                    Text("TOML válido — ainda não aplicado")
+                    Text("\(modelo.formatoRascunho) válido — ainda não aplicado")
+                    if modelo.formatoRascunho == "JSONC" && modelo.edicao.documento?.nomeFormato == "JSON" {
+                        Text("· o arquivo era JSON puro; nem todo programa aceita comentário ou vírgula final")
+                            .foregroundStyle(.orange)
+                    }
                 } else {
                     Image(systemName: "checkmark.circle").foregroundStyle(.secondary)
-                    Text("TOML válido").foregroundStyle(.secondary)
+                    Text("\(modelo.formatoRascunho) válido").foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -55,6 +59,7 @@ struct TextoView: View {
 struct EditorTexto: NSViewRepresentable {
     @Binding var texto: String
     var linhaErro: Int?
+    var formato: Formato = .toml
 
     func makeCoordinator() -> Coordenador { Coordenador(self) }
 
@@ -117,15 +122,54 @@ struct EditorTexto: NSViewRepresentable {
             ts.beginEditing()
             let tudo = NSRange(location: 0, length: s.length)
             ts.setAttributes([.font: Coordenador.fonte, .foregroundColor: NSColor.textColor], range: tudo)
+            if pai.formato == .json { colorirJSON(s, ts) }
             var numero = 0
             s.enumerateSubstrings(in: tudo, options: [.byLines, .substringNotRequired]) { _, r, _, _ in
                 numero += 1
-                self.colorirLinha(s, r, ts)
+                if self.pai.formato == .toml { self.colorirLinha(s, r, ts) }
                 if numero == self.linhaErro {
                     ts.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.15), range: r)
                 }
             }
             ts.endEditing()
+        }
+
+        /// JSON/JSONC: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza.
+        private func colorirJSON(_ s: NSString, _ ts: NSTextStorage) {
+            let u = Array((s as String).utf16)
+            func pinta(_ a: Int, _ b: Int, _ c: NSColor) {
+                guard b > a else { return }
+                ts.addAttribute(.foregroundColor, value: c, range: NSRange(location: a, length: b - a))
+            }
+            var i = 0
+            while i < u.count {
+                let c = u[i]
+                if c == 34 {                                                        // "
+                    var fim = i + 1
+                    while fim < u.count, u[fim] != 34, u[fim] != 10 {
+                        fim += u[fim] == 92 ? 2 : 1                                 // \ escape
+                    }
+                    fim = min(fim + 1, u.count)
+                    // chave se o próximo caractere (fora espaços) for ':'
+                    var k = fim
+                    while k < u.count, u[k] == 32 || u[k] == 9 { k += 1 }
+                    pinta(i, fim, k < u.count && u[k] == 58 ? .systemBlue : .systemRed)
+                    i = fim
+                } else if c == 47, i + 1 < u.count, u[i + 1] == 47 {                // //
+                    var fim = i
+                    while fim < u.count, u[fim] != 10 { fim += 1 }
+                    pinta(i, fim, .secondaryLabelColor)
+                    i = fim
+                } else if c == 47, i + 1 < u.count, u[i + 1] == 42 {                // /*
+                    var fim = i + 2
+                    while fim + 1 < u.count, !(u[fim] == 42 && u[fim + 1] == 47) { fim += 1 }
+                    fim = min(fim + 2, u.count)
+                    pinta(i, fim, .secondaryLabelColor)
+                    i = fim
+                } else {
+                    i += 1
+                }
+            }
         }
 
         private func colorirLinha(_ s: NSString, _ r: NSRange, _ ts: NSTextStorage) {

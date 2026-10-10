@@ -1,7 +1,10 @@
 import AppKit
 import ConfCore
 
-/// `KM_CONF_AUTOTESTE="<arquivo.toml>|<pasta-de-saída>" km-conf.app/Contents/MacOS/km-conf`
+/// `KM_CONF_AUTOTESTE="<arquivo>|<pasta-de-saída>" km-conf.app/Contents/MacOS/km-conf`
+///
+/// O arquivo é uma cópia de `exemplos/config.toml` ou `exemplos/config.jsonc` (o
+/// roteiro de cada formato conta com os campos desses exemplos).
 ///
 /// Diagnóstico sem teclado: abre o arquivo, altera valores pelo mesmo caminho
 /// dos controles, salva pela ação do ⌘S (`saveDocument:`), desfaz pela do ⌘Z
@@ -23,6 +26,31 @@ enum Autoteste {
     }
 
     static func passo(_ espera: Double = 0.3, _ f: @escaping () -> Void) { passos.append((espera, f)) }
+
+    /// O que muda de um formato para outro: como estragar o texto, como acrescentar
+    /// uma chave e como simular outro programa gravando no arquivo.
+    struct Roteiro {
+        var nomeFormato: String
+        var textoInvalido: (String) -> String
+        var textoValido: (String) -> String
+        var caminhoNovo: Caminho
+        var externo: (de: String, para: String)
+    }
+
+    static func roteiro(_ arquivo: URL) -> Roteiro {
+        if Formato(extensao: arquivo.pathExtension) == .json {
+            return Roteiro(nomeFormato: "JSONC",
+                           textoInvalido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": ,") },
+                           textoValido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": 3,\n  \"novo\": 1,") },
+                           caminhoNovo: [.chave("novo")],
+                           externo: ("\"pool\": 12", "\"pool\": 30"))
+        }
+        return Roteiro(nomeFormato: "TOML",
+                       textoInvalido: { $0 + "\n[novo]\nx = \n" },
+                       textoValido: { $0 + "\n[novo]\nx = 1\n" },
+                       caminhoNovo: [.chave("novo"), .chave("x")],
+                       externo: ("pool = 12", "pool = 30"))
+    }
 
     static func proximo() {
         guard !passos.isEmpty else { return }
@@ -60,6 +88,7 @@ enum Autoteste {
         let bak = arquivo.appendingPathExtension("bak")
         try? FileManager.default.removeItem(at: bak)
         let original = (try? Data(contentsOf: arquivo)) ?? Data()
+        let r = roteiro(arquivo)
 
         var doc: Documento!
         var m: ModeloJanela { doc.modelo }
@@ -77,6 +106,7 @@ enum Autoteste {
 
         passo(1.5) {
             registra(janela?.isVisible == true, "janela aberta: \(janela?.title ?? "-")")
+            registra(m.edicao.documento?.nomeFormato == r.nomeFormato, "lido como \(r.nomeFormato)")
             registra((try? m.edicao.resultado()).map { Data($0) } == original, "abrir sem alterar: mesmos bytes")
             m.selecao = "servidor"
         }
@@ -120,23 +150,24 @@ enum Autoteste {
         passo(2) {
             registra((try? Data(contentsOf: arquivo)) == original, "desfazer tudo e salvar: arquivo idêntico ao original")
             m.trocarModo(.texto)
-            m.rascunho = String(decoding: original, as: UTF8.self) + "\n[novo]\nx = \n"
+            m.rascunho = r.textoInvalido(String(decoding: original, as: UTF8.self))
         }
         passo(0.8) {
             registra(m.erroRascunho != nil, "texto inválido mostra erro: \(m.erroRascunho?.description ?? "-")")
             foto(janela, saida.appendingPathComponent("3-texto-erro.png"))
             registra(!m.aplicarRascunho(), "texto inválido não é aplicado")
-            m.rascunho = String(decoding: original, as: UTF8.self) + "\n[novo]\nx = 1\n"
+            m.rascunho = r.textoValido(String(decoding: original, as: UTF8.self))
+            registra(m.erroRascunho == nil && m.formatoRascunho == r.nomeFormato, "texto válido reconhecido como \(m.formatoRascunho)")
             var aplicou = false
             comoEvento(doc) { aplicou = m.aplicarRascunho() }
-            registra(aplicou && m.edicao.documento?.entrada([.chave("novo"), .chave("x")]) != nil, "texto válido aplicado")
+            registra(aplicou && m.edicao.documento?.entrada(r.caminhoNovo) != nil, "texto válido aplicado")
         }
         passo {
             comoEvento(doc) { doc.undoManager?.undo() }
             registra(m.edicao.temAlteracoes == false, "⌘Z desfez a edição de texto")
             m.trocarModo(.formulario)
             // Outro programa grava no arquivo sem edição pendente: o documento recarrega sozinho.
-            let externo = String(decoding: original, as: UTF8.self).replacingOccurrences(of: "pool = 12", with: "pool = 30")
+            let externo = String(decoding: original, as: UTF8.self).replacingOccurrences(of: r.externo.de, with: r.externo.para)
             try? externo.write(to: arquivo, atomically: true, encoding: .utf8)
         }
         passo(3) {

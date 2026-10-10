@@ -11,7 +11,7 @@ public enum TipoCampo: Hashable, Sendable {
     case data(DataHora.Tipo)
     /// Lista de valores simples, todos do mesmo tipo (etiquetas).
     case lista(TipoValor)
-    /// Texto TOML cru do valor (listas mistas, listas de tabelas embutidas, tabelas embutidas…).
+    /// Texto cru do valor, no formato do arquivo (listas mistas, tabelas embutidas, `null`…).
     case cru
 
     public var nome: String {
@@ -29,8 +29,14 @@ public enum TipoCampo: Hashable, Sendable {
             case .hora: return "hora"
             }
         case .lista(let t): return "lista de \(TipoCampo.plural(t))"
-        case .cru: return "TOML"
+        case .cru: return "texto cru"
         }
+    }
+
+    /// Nome para a tela; o texto cru leva o nome do formato ("TOML", "JSON").
+    public func nome(em formato: Formato) -> String {
+        if case .cru = self { return formato.nome }
+        return nome
     }
 
     static func plural(_ t: TipoValor) -> String {
@@ -44,6 +50,7 @@ public enum TipoCampo: Hashable, Sendable {
         case .hora: return "horas"
         case .lista: return "listas"
         case .tabela: return "tabelas"
+        case .nulo: return "nulos"
         }
     }
 }
@@ -63,7 +70,8 @@ public struct Campo: Identifiable, Sendable {
     public var linha: Int
 }
 
-/// Uma seção da tela: a raiz, uma `[tabela]` ou um item de `[[lista]]`.
+/// Uma seção da tela: a raiz, uma `[tabela]` ou um item de `[[lista]]`
+/// (em JSON: um objeto aninhado ou um objeto dentro de uma lista).
 public struct Secao: Identifiable, Sendable {
     /// Estável enquanto a estrutura do arquivo não muda: "raiz" ou o caminho do cabeçalho.
     public var id: String
@@ -82,7 +90,8 @@ public struct Secao: Identifiable, Sendable {
 
 public enum Campos {
     /// Monta as seções na ordem do arquivo.
-    public static func secoes(_ doc: DocumentoTOML) -> [Secao] {
+    public static func secoes(_ doc: DocumentoConf) -> [Secao] {
+        let json = doc.formato == .json
         var porSecao: [Int: [Campo]] = [:]
         var raiz: [Campo] = []
         for e in doc.entradas {
@@ -91,19 +100,27 @@ public enum Campos {
         }
         var r: [Secao] = []
         if !raiz.isEmpty || doc.cabecalhos.isEmpty {
-            r.append(Secao(id: "raiz", titulo: "Raiz", subtitulo: "chaves fora de qualquer tabela",
-                           caminho: [], campos: raiz))
+            var sub = "chaves fora de qualquer tabela"
+            if json { if case .tabela = doc.valorRaiz { sub = "chaves do objeto principal" } else { sub = "valor principal do arquivo" } }
+            r.append(Secao(id: "raiz", titulo: "Raiz", subtitulo: sub, caminho: [], campos: raiz))
         }
         // total de itens por lista de tabelas (mesmo caminho sem o índice final)
         var totais: [Caminho: Int] = [:]
         for c in doc.cabecalhos where c.ehListaDeTabelas { totais[Array(c.caminho.dropLast()), default: 0] += 1 }
 
         for (i, c) in doc.cabecalhos.enumerated() {
-            let nome = c.nomes.map(Segmento.chaveFormatada).joined(separator: ".")
+            var nome = c.nomes.map(Segmento.chaveFormatada).joined(separator: ".")
+            var subtitulo = c.ehListaDeTabelas ? "[[\(nome)]]" : "[\(nome)]"
+            if json {
+                // em JSON o caminho tem os índices das listas: `tarefas[0].ambiente`
+                let lista = c.ehListaDeTabelas ? Array(c.caminho.dropLast()) : c.caminho
+                nome = lista.isEmpty ? "(raiz)" : lista.texto
+                let chave: String
+                switch lista.last { case .chave(let k)?: chave = Formatar.textoBasico(k) + ": "; default: chave = "" }
+                subtitulo = c.ehListaDeTabelas ? chave + "[ { … } ]" : chave + "{ … }"
+            }
             let campos = porSecao[i] ?? []
-            var s = Secao(id: c.caminho.texto, titulo: nome,
-                          subtitulo: c.ehListaDeTabelas ? "[[\(nome)]]" : "[\(nome)]",
-                          caminho: c.caminho, campos: campos)
+            var s = Secao(id: c.caminho.texto, titulo: nome, subtitulo: subtitulo, caminho: c.caminho, campos: campos)
             let ajuda = (c.comentarioAcima + [c.comentarioFim].compactMap { $0 }).filter { !$0.isEmpty }
             s.ajuda = ajuda.isEmpty ? nil : ajuda.joined(separator: "\n")
             if c.ehListaDeTabelas, case .indice(let k)? = c.caminho.last {
@@ -131,7 +148,7 @@ public enum Campos {
         return nil
     }
 
-    public static func campo(_ e: Entrada, doc: DocumentoTOML) -> Campo {
+    public static func campo(_ e: Entrada, doc: DocumentoConf) -> Campo {
         let comentarios = (e.comentarioAcima + [e.comentarioFim].compactMap { $0 }).filter { !$0.isEmpty }
         return Campo(caminho: e.caminho, rotulo: e.chaveEscrita, tipo: tipo(e), valor: e.valor,
                      textoOriginal: doc.texto(e.intervalo),
@@ -161,7 +178,7 @@ public enum Campos {
                 return .cru
             }
             return .lista(t)
-        case .tabela: return .cru
+        case .tabela, .nulo: return .cru
         }
     }
 

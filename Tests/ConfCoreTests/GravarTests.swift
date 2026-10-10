@@ -86,6 +86,7 @@ func mutado(_ v: Valor) -> Valor? {
     case .tabela(var t):
         t["km_toml_novo"] = .inteiro(7)
         return .tabela(t)
+    case .nulo: return .booleano(true)
     }
 }
 

@@ -4,7 +4,7 @@ import Foundation
 public enum NovoValor: Hashable, Sendable {
     /// Valor novo, escrito no estilo do valor antigo.
     case valor(Valor)
-    /// Texto TOML cru do valor (por exemplo `[1, "a"]`), gravado como está depois de validado.
+    /// Texto cru do valor no formato do arquivo (por exemplo `[1, "a"]`), gravado como está depois de validado.
     case cru(String)
 }
 
@@ -21,18 +21,20 @@ public enum Gravar {
     ///
     /// Antes de devolver, relê o resultado com o `Leitor` e confere se os valores
     /// são os esperados; se não forem, lança erro e nada deve ser gravado.
-    public static func aplicar(_ original: [UInt8], alteracoes: [Caminho: NovoValor]) throws -> [UInt8] {
+    public static func aplicar(_ original: [UInt8], alteracoes: [Caminho: NovoValor],
+                               formato: Formato = .toml) throws -> [UInt8] {
         if alteracoes.isEmpty { return original }
-        let doc: DocumentoTOML
-        do { doc = try Leitor.ler(original) } catch {
-            throw ErroGravar("o arquivo atual não é TOML válido (\(error)); edite pelo modo Texto")
+        let doc: DocumentoConf
+        do { doc = try formato.ler(original) } catch {
+            throw ErroGravar("o arquivo atual não é \(formato.nome) válido (\(error)); edite pelo modo Texto")
         }
         return try aplicar(doc, alteracoes: alteracoes)
     }
 
-    public static func aplicar(_ doc: DocumentoTOML, alteracoes: [Caminho: NovoValor]) throws -> [UInt8] {
+    public static func aplicar(_ doc: DocumentoConf, alteracoes: [Caminho: NovoValor]) throws -> [UInt8] {
+        let formato = doc.formato
         var trocas: [(Range<Int>, [UInt8])] = []
-        var esperado = doc.raiz
+        var esperado = doc.valorRaiz
         for (caminho, novo) in alteracoes {
             guard let e = doc.entrada(caminho) else {
                 throw ErroGravar("a chave '\(caminho.texto)' não existe mais no arquivo")
@@ -42,16 +44,17 @@ public enum Gravar {
             let textoNovo: [UInt8]
             switch novo {
             case .cru(let s):
-                do { valorNovo = try Leitor.lerValor(s) } catch {
-                    throw ErroGravar("valor de '\(caminho.texto)' não é TOML válido: \(error)")
+                do { valorNovo = try formato.lerValor(s) } catch {
+                    throw ErroGravar("valor de '\(caminho.texto)' não é \(formato.nome) válido: \(error)")
                 }
                 textoNovo = Array(s.utf8)
                 if textoNovo == textoAntigo { continue }
             case .valor(let v):
                 if v == e.valor { continue }
+                if let p = formato.problema(v) { throw ErroGravar("'\(caminho.texto)': \(p)") }
                 valorNovo = v
-                textoNovo = Array(Formatar.valor(v, antigo: e.valor, posicao: e.posicao, fonte: doc.bytes,
-                                                 quebra: doc.quebraDeLinha).utf8)
+                textoNovo = Array(formato.escrever(v, antigo: e.valor, posicao: e.posicao, fonte: doc.bytes,
+                                                   quebra: doc.quebraDeLinha).utf8)
             }
             trocas.append((e.intervalo, textoNovo))
             guard let t = esperado.substituindo(caminho, por: valorNovo) else {
@@ -64,11 +67,15 @@ public enum Gravar {
         for (intervalo, novo) in trocas.sorted(by: { $0.0.lowerBound > $1.0.lowerBound }) {
             r.replaceSubrange(intervalo, with: novo)
         }
-        let relido: DocumentoTOML
-        do { relido = try Leitor.ler(r) } catch {
-            throw ErroGravar("o resultado não seria TOML válido (\(error)); nada foi gravado")
+        let relido: DocumentoConf
+        do { relido = try formato.ler(r) } catch {
+            throw ErroGravar("o resultado não seria \(formato.nome) válido (\(error)); nada foi gravado")
         }
-        guard relido.raiz == esperado else {
+        // Um JSON puro continua puro: um valor cru com comentário ou vírgula final o tornaria JSONC.
+        if formato == .json && !doc.usaExtensoesJSONC && relido.usaExtensoesJSONC {
+            throw ErroGravar("o resultado teria comentário ou vírgula final, que o JSON puro deste arquivo não tem; nada foi gravado")
+        }
+        guard relido.valorRaiz == esperado else {
             throw ErroGravar("o resultado relido não confere com os valores pedidos; nada foi gravado")
         }
         return r
@@ -88,6 +95,7 @@ public enum Formatar {
         case .dataHora(let dh): return dataHora(dh, estilo: a)
         case .lista(let itens): return lista(itens, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
         case .tabela(let t): return tabelaEmbutida(t)
+        case .nulo: return "null"
         }
     }
 
@@ -219,9 +227,26 @@ public enum Formatar {
     }
 
     static func lista(_ itens: [Valor], antigo: Valor?, posicao: Posicao?, fonte: [UInt8], quebra: String) -> String {
+        lista(itens, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra,
+              escrever: { v, a, p in valor(v, antigo: a, posicao: p, fonte: fonte, quebra: quebra) },
+              temComentario: { $0.contains("#") },
+              semComentarios: { s in
+                  s.split(separator: "\n", omittingEmptySubsequences: false)
+                      .map { l in l.firstIndex(of: "#").map { l[..<$0] } ?? l }
+                      .joined(separator: "\n")
+              })
+    }
+
+    /// Lista no estilo da antiga, comum a TOML e JSON. `escrever` escreve um item
+    /// (com o item antigo e a posição dele, se houver); `temComentario` e
+    /// `semComentarios` reconhecem comentários entre os itens.
+    static func lista(_ itens: [Valor], antigo: Valor?, posicao: Posicao?, fonte: [UInt8], quebra: String,
+                      escrever: (Valor, Valor?, Posicao?) -> String,
+                      temComentario: (String) -> Bool,
+                      semComentarios: (String) -> String) -> String {
         guard case .lista(let velhos)? = antigo, let pos = posicao, pos.itens.count == velhos.count,
               pos.intervalo.count >= 2 else {
-            return "[" + itens.map { valor($0) }.joined(separator: ", ") + "]"
+            return "[" + itens.map { escrever($0, nil, nil) }.joined(separator: ", ") + "]"
         }
         func txt(_ r: Range<Int>) -> String { String(decoding: fonte[r], as: UTF8.self) }
         // "\r\n" é um caractere só em Swift: procurar a quebra pelos bytes
@@ -234,7 +259,7 @@ public enum Formatar {
             for i in itens.indices where itens[i] != velhos[i] {
                 let ip = pos.itens[i]
                 r += txt(cursor..<ip.intervalo.lowerBound)
-                r += valor(itens[i], antigo: velhos[i], posicao: ip, fonte: fonte, quebra: quebra)
+                r += escrever(itens[i], velhos[i], ip)
                 cursor = ip.intervalo.upperBound
             }
             return r + txt(cursor..<pos.intervalo.upperBound)
@@ -243,12 +268,12 @@ public enum Formatar {
         // Cada item novo copia o estilo do item antigo na mesma posição, ou do primeiro do mesmo tipo.
         let escritos: [String] = itens.enumerated().map { i, v in
             if i < velhos.count, velhos[i].tipo == v.tipo {
-                return valor(v, antigo: velhos[i], posicao: pos.itens[i], fonte: fonte, quebra: quebra)
+                return escrever(v, velhos[i], pos.itens[i])
             }
             if let j = velhos.firstIndex(where: { $0.tipo == v.tipo }), v.tipo != .lista {
-                return valor(v, antigo: velhos[j], posicao: pos.itens[j], fonte: fonte, quebra: quebra)
+                return escrever(v, velhos[j], pos.itens[j])
             }
-            return valor(v, quebra: quebra)
+            return escrever(v, nil, nil)
         }
 
         let ini = pos.intervalo.lowerBound, fim = pos.intervalo.upperBound
@@ -263,7 +288,7 @@ public enum Formatar {
 
         let antes = txt((ini + 1)..<primeiro.intervalo.lowerBound)
         let depois = txt(ultimo.intervalo.upperBound..<(fim - 1))
-        let virgulaFinal = depois.contains(",")
+        let virgulaFinal = semComentarios(depois).contains(",")
         var entre: [String] = []
         for k in 1..<pos.itens.count {
             entre.append(txt(pos.itens[k - 1].intervalo.upperBound..<pos.itens[k].intervalo.lowerBound))
@@ -273,7 +298,7 @@ public enum Formatar {
         if !variasLinhas {
             let abre = antes.allSatisfy { $0 == " " || $0 == "\t" } ? antes : ""
             var sep = ", "
-            if let e = entre.first, !e.contains("#"), !temQuebra(e) { sep = e }
+            if let e = entre.first, !temComentario(e), !temQuebra(e) { sep = e }
             var fecha = depois
             if let v = fecha.lastIndex(of: ",") { fecha = String(fecha[fecha.index(after: v)...]) }
             if !fecha.allSatisfy({ $0 == " " || $0 == "\t" }) { fecha = "" }
