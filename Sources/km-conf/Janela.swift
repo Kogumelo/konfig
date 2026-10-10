@@ -136,7 +136,8 @@ struct BarraLateral: View {
         }
         .overlay {
             if modelo.secoes.isEmpty {
-                Text(modelo.edicao.documento == nil ? "Arquivo com erro de \(modelo.formato.nome)" : "Arquivo vazio")
+                Text(modelo.edicao.somenteTexto ? "Só no modo Texto"
+                     : modelo.edicao.documento == nil ? "Arquivo com erro de \(modelo.formato.nome)" : "Arquivo vazio")
                     .foregroundStyle(.secondary).font(.callout)
             }
         }
@@ -162,11 +163,15 @@ struct Formulario: View {
     var body: some View {
         if modelo.edicao.documento == nil {
             ContentUnavailableView {
-                Label("O arquivo não é \(modelo.formato.nome) válido", systemImage: "exclamationmark.triangle")
+                if modelo.edicao.somenteTexto {
+                    Label("Este \(modelo.formato.nome) só pode ser editado como texto", systemImage: "doc.plaintext")
+                } else {
+                    Label("O arquivo não é \(modelo.formato.nome) válido", systemImage: "exclamationmark.triangle")
+                }
             } description: {
                 Text(modelo.edicao.erro.map { "Linha \($0.linha), coluna \($0.coluna): \($0.mensagem)" } ?? "")
             } actions: {
-                Button("Corrigir no modo Texto") { modelo.trocarModo(.texto) }
+                Button(modelo.edicao.somenteTexto ? "Editar no modo Texto" : "Corrigir no modo Texto") { modelo.trocarModo(.texto) }
             }
         } else if let s = modelo.secaoSelecionada {
             Form {
@@ -178,6 +183,8 @@ struct Formulario: View {
                              ? "O arquivo não tem variáveis. Para criar, use o modo Texto."
                              : modelo.formato == .ini
                              ? "Esta seção não tem chaves. Para criar, use o modo Texto."
+                             : modelo.formato == .yaml
+                             ? "Este mapa não tem valores próprios. Para criar chaves, use o modo Texto."
                              : "Esta tabela não tem valores próprios. Para criar chaves, use o modo Texto.")
                             .foregroundStyle(.secondary)
                     }

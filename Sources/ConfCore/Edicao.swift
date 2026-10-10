@@ -87,9 +87,14 @@ public struct Edicao: Sendable {
         return r != disco
     }
 
-    /// Troca o texto inteiro (modo Texto). Só aceita texto válido no formato.
+    /// O arquivo é válido, mas usa algo fora do subconjunto que o formulário edita
+    /// (`ErroLeitura.foraDoSubconjunto`): só pode ser editado como texto.
+    public var somenteTexto: Bool { documento == nil && erro?.foraDoSubconjunto == true }
+
+    /// Troca o texto inteiro (modo Texto). Só aceita texto válido no formato; um texto fora
+    /// do subconjunto do formulário também é aceito (fica só no modo Texto, gravado como está).
     public mutating func trocarTexto(_ novo: [UInt8]) throws(ErroLeitura) {
-        _ = try formato.ler(novo)
+        do { _ = try formato.ler(novo) } catch where error.foraDoSubconjunto {}
         base = novo
         alteracoes = [:]
         relerBase()

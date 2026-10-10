@@ -47,7 +47,7 @@ public enum Gravar {
                 do { valorNovo = try formato.lerValor(s) } catch {
                     throw ErroGravar("valor de '\(caminho.texto)' não é \(formato.nome) válido: \(error)")
                 }
-                textoNovo = Array(s.utf8)
+                textoNovo = Array(formato.ajustarCru(s, posicao: e.posicao, fonte: doc.bytes).utf8)
                 if textoNovo == textoAntigo { continue }
             case .valor(let v):
                 if v == e.valor { continue }
