@@ -1,0 +1,10 @@
+{
+  // comentário com CRLF
+  "a": "x", // fim
+  /* bloco
+     em duas linhas */
+  "b": [
+    1,
+    2,
+  ],
+}

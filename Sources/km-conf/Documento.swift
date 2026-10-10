@@ -43,6 +43,12 @@ final class ModeloJanela {
     @ObservationIgnored weak var documento: Documento?
     @ObservationIgnored private var discoLido: (bytes: [UInt8], doc: DocumentoConf?)?
 
+    /// Arquivo `.json` (não `.jsonc`) com comentário ou vírgula final: aviso discreto na janela.
+    var avisoJSONC: Bool {
+        formato == .json && edicao.documento?.usaExtensoesJSONC == true
+            && !nomeArquivo.lowercased().hasSuffix(".jsonc")
+    }
+
     var secaoSelecionada: Secao? { secoes.first { $0.id == selecao } ?? secoes.first }
 
     // MARK: Carregar e recalcular
@@ -170,7 +176,7 @@ final class ModeloJanela {
     }
 }
 
-/// Um arquivo `.toml`, `.json` ou `.jsonc` aberto. AppKit cuida de ⌘S, Reverter, aviso de
+/// Um arquivo `.toml`, `.json`, `.jsonc`, `.json5` ou `.env` aberto. AppKit cuida de ⌘S, Reverter, aviso de
 /// alteração externa e recarga.
 @objc(Documento)
 final class Documento: NSDocument {

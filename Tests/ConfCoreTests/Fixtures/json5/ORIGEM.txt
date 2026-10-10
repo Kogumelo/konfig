@@ -1,0 +1,11 @@
+Casos copiados de https://github.com/json5/json5-tests
+commit ceb24d4080137d70833f86c25659c1331b80a387 (2026-02-20).
+Licença MIT: ver LICENSE nesta pasta (LICENSE.md no original).
+
+Copiados os arquivos de caso (.json, .json5, .js, .txt) de todas as pastas, inclusive
+todo/; ficaram de fora README.md, .editorconfig e os .errorSpec (mensagens de erro do
+leitor de referência, que não se aplicam aqui). new-lines/.gitattributes veio junto:
+ele impede o git de mexer nas quebras CR e CRLF desses arquivos.
+
+Regra da suíte (README dela): .json e .json5 devem ser aceitos; .js (ES5 válido que o
+JSON5 proíbe) e .txt (inválido) devem ser recusados.

@@ -122,12 +122,12 @@ struct EditorTexto: NSViewRepresentable {
             ts.beginEditing()
             let tudo = NSRange(location: 0, length: s.length)
             ts.setAttributes([.font: Coordenador.fonte, .foregroundColor: NSColor.textColor], range: tudo)
-            if pai.formato == .json { colorirJSON(s, ts) }
+            if pai.formato.ehJSON { colorirJSON(s, ts, json5: pai.formato == .json5) }
             var numero = 0
             s.enumerateSubstrings(in: tudo, options: [.byLines, .substringNotRequired]) { _, r, _, _ in
                 numero += 1
                 // .env usa as mesmas cores por linha: `#` comentário, chave antes do `=`, textos entre aspas
-                if self.pai.formato != .json { self.colorirLinha(s, r, ts) }
+                if !self.pai.formato.ehJSON { self.colorirLinha(s, r, ts) }
                 if numero == self.linhaErro {
                     ts.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.15), range: r)
                 }
@@ -135,20 +135,25 @@ struct EditorTexto: NSViewRepresentable {
             ts.endEditing()
         }
 
-        /// JSON/JSONC: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza.
-        private func colorirJSON(_ s: NSString, _ ts: NSTextStorage) {
+        /// JSON/JSONC/JSON5: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza.
+        /// Em JSON5, também textos com aspas simples e chaves sem aspas.
+        private func colorirJSON(_ s: NSString, _ ts: NSTextStorage, json5: Bool) {
             let u = Array((s as String).utf16)
             func pinta(_ a: Int, _ b: Int, _ c: NSColor) {
                 guard b > a else { return }
                 ts.addAttribute(.foregroundColor, value: c, range: NSRange(location: a, length: b - a))
             }
+            /// Letra, dígito, `$`, `_` ou não-ASCII: parte de uma chave JSON5 sem aspas.
+            func ident(_ c: UInt16) -> Bool {
+                (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 36 || c == 95 || c > 127
+            }
             var i = 0
             while i < u.count {
                 let c = u[i]
-                if c == 34 {                                                        // "
+                if c == 34 || (json5 && c == 39) {                                  // " ou '
                     var fim = i + 1
-                    while fim < u.count, u[fim] != 34, u[fim] != 10 {
-                        fim += u[fim] == 92 ? 2 : 1                                 // \ escape
+                    while fim < u.count, u[fim] != c, u[fim] != 10 {
+                        fim += u[fim] == 92 ? 2 : 1                                 // \ escape (e continuação de linha)
                     }
                     fim = min(fim + 1, u.count)
                     // chave se o próximo caractere (fora espaços) for ':'
@@ -166,6 +171,13 @@ struct EditorTexto: NSViewRepresentable {
                     while fim + 1 < u.count, !(u[fim] == 42 && u[fim + 1] == 47) { fim += 1 }
                     fim = min(fim + 2, u.count)
                     pinta(i, fim, .secondaryLabelColor)
+                    i = fim
+                } else if json5, ident(c), i == 0 || !ident(u[i - 1]) {             // chave sem aspas
+                    var fim = i
+                    while fim < u.count, ident(u[fim]) { fim += 1 }
+                    var k = fim
+                    while k < u.count, u[k] == 32 || u[k] == 9 { k += 1 }
+                    if k < u.count && u[k] == 58 { pinta(i, fim, .systemBlue) }
                     i = fim
                 } else {
                     i += 1

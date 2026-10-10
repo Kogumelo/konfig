@@ -9,6 +9,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
     case toml
     /// JSON (RFC 8259) e JSONC (JSON com comentários `//` e `/* */` e vírgula final).
     case json
+    /// JSON5 (spec.json5.org): chaves sem aspas, aspas simples, hexadecimal, `Infinity`, `NaN`…
+    case json5
     /// Variáveis de ambiente `CHAVE=valor` (`.env`, `.env.local`, `producao.env`).
     case env
 
@@ -17,6 +19,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch extensao.lowercased() {
         case "toml": self = .toml
         case "json", "jsonc": self = .json
+        case "json5": self = .json5
         case "env": self = .env
         default: return nil
         }
@@ -43,10 +46,14 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         return nil
     }
 
+    /// JSON, JSONC ou JSON5: objetos viram seções, listas de objetos viram grupos.
+    public var ehJSON: Bool { self == .json || self == .json5 }
+
     public var nome: String {
         switch self {
         case .toml: return "TOML"
         case .json: return "JSON"
+        case .json5: return "JSON5"
         case .env: return ".env"
         }
     }
@@ -56,6 +63,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return try Leitor.ler(bytes)
         case .json: return try LeitorJSON.ler(bytes)
+        case .json5: return try LeitorJSON.lerJSON5(bytes)
         case .env: return try LeitorEnv.ler(bytes)
         }
     }
@@ -65,6 +73,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return try Leitor.lerValor(texto)
         case .json: return try LeitorJSON.lerValor(texto)
+        case .json5: return try LeitorJSON.lerValorJSON5(texto)
         case .env: return try LeitorEnv.lerValor(texto)
         }
     }
@@ -75,6 +84,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return Formatar.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
         case .json: return FormatarJSON.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
+        case .json5:
+            return FormatarJSON.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra, json5: true)
         case .env: return FormatarEnv.valor(v, posicao: posicao, fonte: fonte, quebra: quebra)
         }
     }
@@ -90,6 +101,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
             case .dataHora: return "JSON não tem tipo de data"
             default: break
             }
+        case .json5:
+            if case .dataHora = v { return "JSON5 não tem tipo de data" }
         case .env:
             if case .texto = v { return nil }
             return "em .env todo valor é texto"

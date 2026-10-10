@@ -1,0 +1,5 @@
+﻿/* BOM e CRLF */
+{
+  "a": true, // fim
+  "b": [ "x", "y", ],
+}

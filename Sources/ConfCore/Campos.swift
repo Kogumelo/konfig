@@ -91,7 +91,7 @@ public struct Secao: Identifiable, Sendable {
 public enum Campos {
     /// Monta as seções na ordem do arquivo.
     public static func secoes(_ doc: DocumentoConf) -> [Secao] {
-        let json = doc.formato == .json
+        let json = doc.formato.ehJSON
         var porSecao: [Int: [Campo]] = [:]
         var raiz: [Campo] = []
         for e in doc.entradas {
