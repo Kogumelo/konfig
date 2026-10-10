@@ -63,6 +63,22 @@ public enum Gravar {
             esperado = t
         }
         if trocas.isEmpty { return doc.bytes }
+        // Trechos que se cruzam (em INI, uma lista `chave[]` com outra chave entre os
+        // itens): aplica uma alteração por vez, relendo o arquivo entre elas.
+        let ordenadas = trocas.map(\.0).sorted { $0.lowerBound < $1.lowerBound }
+        if zip(ordenadas, ordenadas.dropFirst()).contains(where: { $0.upperBound > $1.lowerBound }) {
+            var atual = doc
+            for (caminho, novo) in alteracoes.sorted(by: { $0.key.texto < $1.key.texto }) {
+                let r = try aplicar(atual, alteracoes: [caminho: novo])
+                do { atual = try formato.ler(r) } catch {
+                    throw ErroGravar("o resultado não seria \(formato.nome) válido (\(error)); nada foi gravado")
+                }
+            }
+            guard atual.valorRaiz == esperado else {
+                throw ErroGravar("o resultado relido não confere com os valores pedidos; nada foi gravado")
+            }
+            return atual.bytes
+        }
         var r = doc.bytes
         for (intervalo, novo) in trocas.sorted(by: { $0.0.lowerBound > $1.0.lowerBound }) {
             r.replaceSubrange(intervalo, with: novo)

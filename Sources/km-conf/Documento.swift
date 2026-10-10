@@ -35,7 +35,7 @@ final class ModeloJanela {
     // modo Texto
     var rascunho = "" { didSet { validarRascunho() } }
     private(set) var erroRascunho: ErroLeitura?
-    /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC", ".env").
+    /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC", ".env", "INI").
     private(set) var formatoRascunho = "TOML"
     private(set) var rascunhoDifere = false
     var erroAoAplicar: String?
@@ -176,7 +176,7 @@ final class ModeloJanela {
     }
 }
 
-/// Um arquivo `.toml`, `.json`, `.jsonc`, `.json5` ou `.env` aberto. AppKit cuida de ⌘S, Reverter, aviso de
+/// Um arquivo `.toml`, `.json`, `.jsonc`, `.json5`, `.env` ou `.ini` aberto. AppKit cuida de ⌘S, Reverter, aviso de
 /// alteração externa e recarga.
 @objc(Documento)
 final class Documento: NSDocument {
@@ -253,10 +253,12 @@ final class Documento: NSDocument {
         }
     }
 
-    /// Arquivos `.env` mantêm o nome: sem isto o ⌘S gravaria `.env` como `.env.env`
-    /// e `.env.local` como `.env.local.env` (o `NSDocument` acrescenta a extensão do tipo).
+    /// Arquivos `.env` e `.editorconfig` mantêm o nome: sem isto o ⌘S gravaria `.env` como `.env.env`,
+    /// `.env.local` como `.env.local.env` e `.editorconfig` como `.editorconfig.ini`
+    /// (o `NSDocument` acrescenta a extensão do tipo).
     override func fileNameExtension(forType typeName: String, saveOperation: NSDocument.SaveOperationType) -> String? {
-        if Formato(tipo: typeName) == .env, let url = fileURL, Formato(nomeArquivo: url.lastPathComponent) == .env {
+        let f = Formato(tipo: typeName)
+        if f == .env || f == .ini, let url = fileURL, Formato(nomeArquivo: url.lastPathComponent) == f {
             return url.pathExtension.isEmpty ? nil : url.pathExtension
         }
         return super.fileNameExtension(forType: typeName, saveOperation: saveOperation)

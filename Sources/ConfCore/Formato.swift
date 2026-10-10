@@ -13,6 +13,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
     case json5
     /// Variáveis de ambiente `CHAVE=valor` (`.env`, `.env.local`, `producao.env`).
     case env
+    /// INI no dialeto descrito em `LeitorINI` (`.ini`, `.editorconfig`).
+    case ini
 
     /// Formato pela extensão do arquivo (sem o ponto, qualquer caixa).
     public init?(extensao: String) {
@@ -21,6 +23,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case "json", "jsonc": self = .json
         case "json5": self = .json5
         case "env": self = .env
+        case "ini", "editorconfig": self = .ini
         default: return nil
         }
     }
@@ -55,6 +58,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json: return "JSON"
         case .json5: return "JSON5"
         case .env: return ".env"
+        case .ini: return "INI"
         }
     }
 
@@ -65,6 +69,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json: return try LeitorJSON.ler(bytes)
         case .json5: return try LeitorJSON.lerJSON5(bytes)
         case .env: return try LeitorEnv.ler(bytes)
+        case .ini: return try LeitorINI.ler(bytes)
         }
     }
 
@@ -75,6 +80,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json: return try LeitorJSON.lerValor(texto)
         case .json5: return try LeitorJSON.lerValorJSON5(texto)
         case .env: return try LeitorEnv.lerValor(texto)
+        case .ini: return try LeitorINI.lerValor(texto)
         }
     }
 
@@ -87,6 +93,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json5:
             return FormatarJSON.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra, json5: true)
         case .env: return FormatarEnv.valor(v, posicao: posicao, fonte: fonte, quebra: quebra)
+        case .ini: return FormatarINI.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
         }
     }
 
@@ -106,6 +113,18 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .env:
             if case .texto = v { return nil }
             return "em .env todo valor é texto"
+        case .ini:
+            switch v {
+            case .texto(let s): return FormatarINI.problema(s)
+            case .lista(let l):
+                if l.isEmpty { return "uma lista 'chave[]' precisa de pelo menos um item; para apagá-la, use o modo Texto" }
+                for item in l {
+                    guard case .texto(let s) = item else { return "em INI todo item de lista é texto" }
+                    if let p = FormatarINI.problema(s) { return p }
+                }
+                return nil
+            default: return "em INI todo valor é texto"
+            }
         }
         switch v {
         case .lista(let l): return l.lazy.compactMap { problema($0) }.first

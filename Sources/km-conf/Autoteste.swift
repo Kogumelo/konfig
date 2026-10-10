@@ -5,7 +5,7 @@ import ConfCore
 ///
 /// O arquivo é uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
 /// `exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5` ou
-/// `exemplos/.env`, com o mesmo nome, ou de `config.jsonc` com nome `algo.json` (o
+/// `exemplos/.env` ou `exemplos/config.ini`, com o mesmo nome, ou de `config.jsonc` com nome `algo.json` (o
 /// roteiro de cada formato conta com os campos desses exemplos; o `.env` é
 /// reconhecido pelo nome).
 ///
@@ -50,6 +50,8 @@ enum Autoteste {
         var textoValido: (String) -> String
         var caminhoNovo: Caminho
         var externo: (de: String, para: String)
+        /// Lista `chave[]` (INI): acrescentar um item deve acrescentar só uma linha.
+        var lista: (campo: String, item: Valor)? = nil
     }
 
     static func roteiro(_ arquivo: URL) -> Roteiro {
@@ -104,6 +106,20 @@ enum Autoteste {
                            textoValido: { $0 + "\nNOVA=1\n" },
                            caminhoNovo: [.chave("NOVA")],
                            externo: ("BANCO_POOL=12", "BANCO_POOL=30"))
+        case .ini?:
+            // exemplos/config.ini (CRLF): as alterações e o texto novo usam a quebra do arquivo
+            return Roteiro(nomeFormato: "INI",
+                           alteracoes: [
+                               ("banco.pool", .texto("20")),
+                               ("servidor.porta", .texto("8443")),
+                               ("servidor.nivel_log", .texto("aviso")),
+                           ],
+                           pool: (.texto("12"), .texto("30")),
+                           textoInvalido: { $0 + "\r\nSEM_IGUAL\r\n" },
+                           textoValido: { $0 + "\r\n[novo]\r\nx = 1\r\n" },
+                           caminhoNovo: [.chave("novo"), .chave("x")],
+                           externo: ("pool = 12", "pool = 30"),
+                           lista: ("php.\"extensoes[]\"", .texto("zip")))
         default:
             return Roteiro(nomeFormato: "TOML",
                            textoInvalido: { $0 + "\n[novo]\nx = \n" },
@@ -179,6 +195,23 @@ enum Autoteste {
                 registra(campo(e.campo)?.tipo == .escolha(e.opcoes), "comentário 'a | b | c' virou escolha")
             } else {
                 registra(m.secoes.flatMap(\.campos).allSatisfy { $0.ajuda == nil }, "sem comentários, nenhum campo com ajuda")
+            }
+        }
+        if let l = r.lista {
+            passo {
+                guard let c = campo(l.campo), case .lista(let itens) = c.valor else {
+                    return registra(false, "lista \(l.campo) não encontrada")
+                }
+                comoEvento(doc) { m.definir(c, .valor(.lista(itens + [l.item]))) }
+            }
+            passo(0.5) {
+                let t = m.trechos
+                registra(t.count == 1 && t[0].trecho.removidas.isEmpty && t[0].trecho.adicionadas.count == 1,
+                         "acrescentar um item na lista \(l.campo): só uma linha nova (\(t.first?.trecho.adicionadas.first ?? "-"))")
+                comoEvento(doc) { doc.undoManager?.undo() }
+            }
+            passo(0.5) {
+                registra(m.trechos.isEmpty && !m.edicao.temAlteracoes, "⌘Z desfez o item acrescentado")
             }
         }
         // Três alterações, cada uma como um evento separado (como três cliques).
