@@ -7,11 +7,26 @@ enum App {
     static let delegado = Delegado()
 
     static func main() {
+        // O primeiro NSDocumentController criado vira o `shared`.
+        _ = ControladorDocumentos()
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
         app.delegate = delegado
         app.mainMenu = Menu.principal()
         app.run()
+    }
+}
+
+/// Decide o tipo do arquivo pela extensão. O macOS não declara `.jsonc` (dá a ele um tipo
+/// "dinâmico"), e a declaração do `Info.plist` só vale depois que o app é registrado.
+final class ControladorDocumentos: NSDocumentController {
+    override func typeForContents(of url: URL) throws -> String {
+        switch url.pathExtension.lowercased() {
+        case "toml": return "public.toml"
+        case "json": return "public.json"
+        case "jsonc": return "br.com.kogut.km-conf.jsonc"
+        default: return try super.typeForContents(of: url)
+        }
     }
 }
 

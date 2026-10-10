@@ -16,7 +16,7 @@ struct CampoView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(campo.rotulo)
-                    Text(campo.tipo.nome)
+                    Text(campo.valor == .nulo ? "nulo" : campo.tipo.nome(em: modelo.formato))
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                     if alterado {
@@ -39,6 +39,7 @@ struct CampoView: View {
 
     @ViewBuilder var controle: some View {
         let v = modelo.valor(campo)
+        let conv = Conversao(formato: modelo.formato)
         switch (campo.tipo, v) {
         case (.texto, .texto(let s)):
             CaixaTexto(atual: s, varias: s.contains("\n"), validar: { _ in nil }) { definir(.texto($0)) }
@@ -49,12 +50,12 @@ struct CampoView: View {
             .labelsHidden()
             .frame(maxWidth: 240)
         case (.inteiro, .inteiro(let n)):
-            CaixaTexto(atual: String(n), largura: 140, validar: { Conversao.inteiro($0).erro }) {
-                if let n = Conversao.inteiro($0).valor { definir(.inteiro(n)) }
+            CaixaTexto(atual: String(n), largura: 140, validar: { conv.inteiro($0).erro }) {
+                if let n = conv.inteiro($0).valor { definir(.inteiro(n)) }
             }
         case (.decimal, .decimal(let d)):
-            CaixaTexto(atual: Formatar.decimal(d), largura: 140, validar: { Conversao.decimal($0).erro }) {
-                if let d = Conversao.decimal($0).valor { definir(.decimal(d)) }
+            CaixaTexto(atual: Formatar.decimal(d), largura: 140, validar: { conv.decimal($0).erro }) {
+                if let d = conv.decimal($0).valor { definir(.decimal(d)) }
             }
         case (.booleano, .booleano(let b)):
             Toggle("", isOn: Binding(get: { b }, set: { definir(.booleano($0)) }))
@@ -63,29 +64,31 @@ struct CampoView: View {
         case (.data, .dataHora(let dh)):
             CampoData(atual: dh) { definir(.dataHora($0)) }
         case (.lista(let t), .lista(let itens)):
-            CampoLista(itens: itens, tipo: t) { definir(.lista($0)) }
+            CampoLista(itens: itens, tipo: t, formato: modelo.formato) { definir(.lista($0)) }
         default:
             // .cru, ou valor de tipo diferente do original vindo de texto cru
             CaixaTexto(atual: modelo.textoCru(campo), varias: true, monoespacada: true, largura: 300,
                        validar: { s in
-                           do { _ = try Leitor.lerValor(s); return nil } catch { return "\(error)" }
+                           do { _ = try modelo.formato.lerValor(s); return nil } catch { return "\(error)" }
                        }) { modelo.definir(campo, .cru($0)) }
         }
     }
 }
 
-/// Converte o que se digita em valores, com mensagens em português.
-enum Conversao {
-    static func inteiro(_ s: String) -> (valor: Int64?, erro: String?) {
+/// Converte o que se digita em valores (na sintaxe do formato do arquivo), com mensagens em português.
+struct Conversao {
+    var formato: Formato
+
+    func inteiro(_ s: String) -> (valor: Int64?, erro: String?) {
         let t = s.trimmingCharacters(in: .whitespaces)
-        if case .inteiro(let n)? = try? Leitor.lerValor(t) { return (n, nil) }
+        if case .inteiro(let n)? = try? formato.lerValor(t) { return (n, nil) }
         return (nil, "inteiro inválido")
     }
 
-    static func decimal(_ s: String) -> (valor: Double?, erro: String?) {
+    func decimal(_ s: String) -> (valor: Double?, erro: String?) {
         var t = s.trimmingCharacters(in: .whitespaces)
         if !t.contains("."), t.filter({ $0 == "," }).count == 1 { t = t.replacingOccurrences(of: ",", with: ".") }
-        switch try? Leitor.lerValor(t) {
+        switch try? formato.lerValor(t) {
         case .decimal(let d)?: return (d, nil)
         case .inteiro(let n)?: return (Double(n), nil)
         default: return (nil, "decimal inválido")
@@ -247,6 +250,7 @@ struct SeletorData: NSViewRepresentable {
 struct CampoLista: View {
     let itens: [Valor]
     let tipo: TipoValor
+    let formato: Formato
     let confirmar: ([Valor]) -> Void
 
     @State private var novo = ""
@@ -297,7 +301,7 @@ struct CampoLista: View {
 
     func rotulo(_ v: Valor) -> String {
         if case .texto(let s) = v { return s }
-        return Formatar.valor(v)
+        return formato.escrever(v)
     }
 
     func adicionar() {
@@ -306,10 +310,10 @@ struct CampoLista: View {
         var v: Valor?
         switch tipo {
         case .texto: v = .texto(novo)
-        case .inteiro: v = Conversao.inteiro(t).valor.map(Valor.inteiro)
-        case .decimal: v = Conversao.decimal(t).valor.map(Valor.decimal)
+        case .inteiro: v = Conversao(formato: formato).inteiro(t).valor.map(Valor.inteiro)
+        case .decimal: v = Conversao(formato: formato).decimal(t).valor.map(Valor.decimal)
         default:
-            if let x = try? Leitor.lerValor(t), x.tipo == tipo { v = x }
+            if let x = try? formato.lerValor(t), x.tipo == tipo { v = x }
         }
         guard let v else { erro = "não é \(tipo.nome)"; return }
         erro = nil

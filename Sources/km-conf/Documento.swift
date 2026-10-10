@@ -19,7 +19,8 @@ struct TrechoRotulado: Identifiable {
 /// Usado só na thread principal (o `Documento` garante isso nos pontos que o AppKit chama de fora).
 @Observable
 final class ModeloJanela {
-    private(set) var edicao = EdicaoTOML([])
+    private(set) var edicao = Edicao([])
+    var formato: Formato { edicao.formato }
     private(set) var secoes: [Secao] = []
     var selecao: String?
     private(set) var modo: Modo = .formulario
@@ -33,19 +34,21 @@ final class ModeloJanela {
 
     // modo Texto
     var rascunho = "" { didSet { validarRascunho() } }
-    private(set) var erroRascunho: ErroTOML?
+    private(set) var erroRascunho: ErroLeitura?
+    /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC").
+    private(set) var formatoRascunho = "TOML"
     private(set) var rascunhoDifere = false
     var erroAoAplicar: String?
 
     @ObservationIgnored weak var documento: Documento?
-    @ObservationIgnored private var discoLido: (bytes: [UInt8], doc: DocumentoTOML?)?
+    @ObservationIgnored private var discoLido: (bytes: [UInt8], doc: DocumentoConf?)?
 
     var secaoSelecionada: Secao? { secoes.first { $0.id == selecao } ?? secoes.first }
 
     // MARK: Carregar e recalcular
 
-    func carregar(_ bytes: [UInt8]) {
-        edicao = EdicaoTOML(bytes)
+    func carregar(_ bytes: [UInt8], formato: Formato) {
+        edicao = Edicao(bytes, formato: formato)
         if edicao.documento == nil {
             modo = .texto
         }
@@ -60,7 +63,7 @@ final class ModeloJanela {
     }
 
     /// Mexe direto na edição (o `Documento` cuida do desfazer).
-    func alterarEdicao(_ f: (inout EdicaoTOML) throws -> Void) rethrows {
+    func alterarEdicao(_ f: (inout Edicao) throws -> Void) rethrows {
         try f(&edicao)
         recalcular()
     }
@@ -70,12 +73,12 @@ final class ModeloJanela {
         if selecao == nil || !secoes.contains(where: { $0.id == selecao }) { selecao = secoes.first?.id }
 
         if discoLido?.bytes != edicao.disco {
-            discoLido = (edicao.disco, try? Leitor.ler(edicao.disco))
+            discoLido = (edicao.disco, try? formato.ler(edicao.disco))
         }
         let disco = discoLido?.doc
         var alt: Set<String> = []
         if let doc = edicao.documento {
-            for e in doc.entradas where edicao.valor(e.caminho) != disco?.raiz.valor(em: e.caminho) {
+            for e in doc.entradas where edicao.valor(e.caminho) != disco?.valorRaiz.valor(em: e.caminho) {
                 alt.insert(e.caminho.texto)
             }
         }
@@ -84,7 +87,7 @@ final class ModeloJanela {
         do {
             let r = try edicao.resultado()
             erroGravacao = nil
-            let novo = r == edicao.base ? edicao.documento : (try? Leitor.ler(r))
+            let novo = r == edicao.base ? edicao.documento : (try? formato.ler(r))
             trechos = Diferenca.linhas(edicao.disco, r).map { t in
                 var tr = TrechoRotulado(trecho: t)
                 let linha = t.adicionadas.isEmpty ? t.linhaAntes : t.linhaDepois
@@ -112,7 +115,7 @@ final class ModeloJanela {
     func textoCru(_ c: Campo) -> String {
         switch edicao.alteracoes[c.caminho] {
         case .cru(let s)?: return s
-        case .valor(let v)?: return Formatar.valor(v)
+        case .valor(let v)?: return formato.escrever(v)
         case nil: return c.textoOriginal
         }
     }
@@ -135,10 +138,15 @@ final class ModeloJanela {
         let bytes = Array(rascunho.utf8)
         let atual = (try? edicao.resultado()) ?? edicao.base
         rascunhoDifere = bytes != atual
-        do { _ = try Leitor.ler(bytes); erroRascunho = nil } catch { erroRascunho = error }
+        do {
+            formatoRascunho = try formato.ler(bytes).nomeFormato
+            erroRascunho = nil
+        } catch {
+            erroRascunho = error
+        }
     }
 
-    /// Aplica o texto se for TOML válido. Devolve `false` se houver erro.
+    /// Aplica o texto se for válido no formato. Devolve `false` se houver erro.
     @discardableResult
     func aplicarRascunho() -> Bool {
         validarRascunho()
@@ -162,7 +170,8 @@ final class ModeloJanela {
     }
 }
 
-/// Um arquivo `.toml` aberto. AppKit cuida de ⌘S, Reverter, aviso de alteração externa e recarga.
+/// Um arquivo `.toml`, `.json` ou `.jsonc` aberto. AppKit cuida de ⌘S, Reverter, aviso de
+/// alteração externa e recarga.
 @objc(Documento)
 final class Documento: NSDocument {
     let modelo = ModeloJanela()
@@ -217,10 +226,20 @@ final class Documento: NSDocument {
         return try DispatchQueue.main.sync { try f() }
     }
 
+    /// Formato pela extensão do arquivo; sem ela, pelo tipo que o macOS deu ao arquivo.
+    private var formatoLido: Formato?
+
+    override func read(from url: URL, ofType typeName: String) throws {
+        formatoLido = Formato(extensao: url.pathExtension)
+        try super.read(from: url, ofType: typeName)
+    }
+
     override func read(from data: Data, ofType typeName: String) throws {
         let bytes = [UInt8](data)
+        let formato = formatoLido ?? fileURL.flatMap { Formato(extensao: $0.pathExtension) }
+            ?? (typeName.lowercased().contains("json") ? .json : .toml)
         naPrincipal {
-            modelo.carregar(bytes)
+            modelo.carregar(bytes, formato: formato)
             modelo.nomeArquivo = fileURL?.lastPathComponent ?? "sem título"
             undoManager?.removeAllActions()
         }
@@ -233,7 +252,7 @@ final class Documento: NSDocument {
     }
 
     override func writeSafely(to url: URL, ofType typeName: String, for op: NSDocument.SaveOperationType) throws {
-        // Cópia do arquivo como estava no disco antes de sobrescrever: <arquivo>.toml.bak
+        // Cópia do arquivo como estava no disco antes de sobrescrever: <arquivo>.toml.bak, <arquivo>.json.bak
         if op != .autosaveElsewhereOperation, FileManager.default.fileExists(atPath: url.path) {
             let bak = url.appendingPathExtension("bak")
             try? FileManager.default.removeItem(at: bak)
@@ -254,7 +273,7 @@ final class Documento: NSDocument {
                 return
             }
         }
-        // O resultado é calculado aqui, na thread principal; se não for TOML válido, nada é gravado.
+        // O resultado é calculado aqui, na thread principal; se não for válido, nada é gravado.
         let bytes: [UInt8]
         do { bytes = try modelo.edicao.resultado() } catch {
             completionHandler(error)
@@ -314,14 +333,14 @@ final class Documento: NSDocument {
         registrarRestauracao(antes, nome: "Editar texto")
     }
 
-    private func restaurar(_ i: EdicaoTOML.Instantaneo, nome: String) {
+    private func restaurar(_ i: Edicao.Instantaneo, nome: String) {
         let atual = modelo.edicao.instantaneo
         modelo.alterarEdicao { $0.restaurar(i) }
         if modelo.modo == .texto { modelo.entrarModoTexto() }
         registrarRestauracao(atual, nome: nome)
     }
 
-    private func registrarRestauracao(_ i: EdicaoTOML.Instantaneo, nome: String) {
+    private func registrarRestauracao(_ i: Edicao.Instantaneo, nome: String) {
         undoManager?.registerUndo(withTarget: self) { d in
             d.restaurar(i, nome: nome)
         }

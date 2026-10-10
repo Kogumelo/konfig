@@ -1,0 +1,37 @@
+// Configuração de exemplo (JSONC: JSON com comentários e vírgula final)
+{
+  "titulo": "Painel Kogumelo", // Nome que aparece no topo
+  "versao": 3,
+
+  "servidor": {
+    "host": "0.0.0.0",
+    "portas": [8080, 8443],
+    "tls": true, // exige certificado
+    // debug | info | aviso | erro
+    "nivel_log": "info",
+  },
+
+  "banco": {
+    /* firebird | postgres */
+    "driver": "firebird",
+    "pool": 12, // conexões simultâneas
+    "fator": 1.50,
+    "senha_arquivo": null,
+  },
+
+  "tarefas": [
+    {
+      "nome": "backup",
+      // minuto hora dia mês dia-da-semana
+      "cron": "0 3 * * *",
+      "ativo": true,
+      "ambiente": { "DESTINO": "\/mnt\/backup" },
+    },
+    {
+      "nome": "limpar-logs",
+      // minuto hora dia mês dia-da-semana
+      "cron": "0 4 * * 0",
+      "ativo": false,
+    },
+  ],
+}

@@ -29,7 +29,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Ferramenta pessoal km-*. Casos de teste do toml-test sob licença MIT.</string>
+	<string>Ferramenta pessoal km-*. Casos de teste do toml-test e da JSONTestSuite sob licença MIT.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -42,6 +42,21 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.toml</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>Documento</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Documento JSON</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.json</string>
+				<string>br.com.kogut.km-conf.jsonc</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
@@ -67,6 +82,25 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/toml</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<!-- O macOS não declara JSONC (a extensão .jsonc fica com um tipo "dinâmico").
+			     Declaração importada: se outro app declarar o tipo, a dele vale. -->
+			<key>UTTypeIdentifier</key>
+			<string>br.com.kogut.km-conf.jsonc</string>
+			<key>UTTypeDescription</key>
+			<string>JSON com comentários (JSONC)</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jsonc</string>
 				</array>
 			</dict>
 		</dict>

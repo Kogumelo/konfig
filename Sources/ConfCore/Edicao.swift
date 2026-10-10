@@ -5,22 +5,24 @@ import Foundation
 /// O texto-base começa igual ao disco e só muda quando o modo Texto aplica um
 /// texto novo. As alterações do formulário ficam em `alteracoes` e só viram
 /// bytes em `resultado()`, que troca apenas os trechos dos valores alterados.
-public struct EdicaoTOML: Sendable {
+public struct Edicao: Sendable {
+    public let formato: Formato
     public private(set) var disco: [UInt8]
     public private(set) var base: [UInt8]
     public private(set) var alteracoes: [Caminho: NovoValor] = [:]
-    /// Leitura do texto-base (`nil` se ele não for TOML válido).
-    public private(set) var documento: DocumentoTOML?
-    public private(set) var erro: ErroTOML?
+    /// Leitura do texto-base (`nil` se ele não for válido no formato).
+    public private(set) var documento: DocumentoConf?
+    public private(set) var erro: ErroLeitura?
 
-    public init(_ bytes: [UInt8]) {
+    public init(_ bytes: [UInt8], formato: Formato = .toml) {
+        self.formato = formato
         disco = bytes
         base = bytes
         relerBase()
     }
 
     private mutating func relerBase() {
-        do { documento = try Leitor.ler(base); erro = nil } catch { documento = nil; erro = error }
+        do { documento = try formato.ler(base); erro = nil } catch { documento = nil; erro = error }
     }
 
     /// Instantâneo para desfazer operações grandes (aplicar o modo Texto).
@@ -42,7 +44,7 @@ public struct EdicaoTOML: Sendable {
     public func valor(_ c: Caminho) -> Valor? {
         switch alteracoes[c] {
         case .valor(let v)?: return v
-        case .cru(let s)?: return try? Leitor.lerValor(s)
+        case .cru(let s)?: return try? formato.lerValor(s)
         case nil: return documento?.entrada(c)?.valor
         }
     }
@@ -62,9 +64,10 @@ public struct EdicaoTOML: Sendable {
         }
         switch novo {
         case .valor(let v):
+            if let p = formato.problema(v) { throw ErroGravar(p) }
             if v == e.valor { alteracoes[c] = nil } else { alteracoes[c] = novo }
         case .cru(let s):
-            do { _ = try Leitor.lerValor(s) } catch {
+            do { _ = try formato.lerValor(s) } catch {
                 throw ErroGravar("valor inválido: \(error)")
             }
             if Array(s.utf8) == Array(doc.bytes[e.intervalo]) { alteracoes[c] = nil } else { alteracoes[c] = novo }
@@ -74,7 +77,7 @@ public struct EdicaoTOML: Sendable {
     /// Bytes a gravar. Sem alterações, é exatamente o texto-base.
     public func resultado() throws -> [UInt8] {
         guard !alteracoes.isEmpty else { return base }
-        guard let doc = documento else { throw ErroGravar("o arquivo não é TOML válido") }
+        guard let doc = documento else { throw ErroGravar("o arquivo não é \(formato.nome) válido") }
         return try Gravar.aplicar(doc, alteracoes: alteracoes)
     }
 
@@ -84,9 +87,9 @@ public struct EdicaoTOML: Sendable {
         return r != disco
     }
 
-    /// Troca o texto inteiro (modo Texto). Só aceita TOML válido.
-    public mutating func trocarTexto(_ novo: [UInt8]) throws(ErroTOML) {
-        _ = try Leitor.ler(novo)
+    /// Troca o texto inteiro (modo Texto). Só aceita texto válido no formato.
+    public mutating func trocarTexto(_ novo: [UInt8]) throws(ErroLeitura) {
+        _ = try formato.ler(novo)
         base = novo
         alteracoes = [:]
         relerBase()
@@ -104,6 +107,9 @@ public struct EdicaoTOML: Sendable {
         alteracoes = [:]
     }
 }
+
+/// Nome antigo, de quando só havia TOML.
+public typealias EdicaoTOML = Edicao
 
 // MARK: - Diferença por linhas
 

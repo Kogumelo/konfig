@@ -72,6 +72,13 @@ struct BarraLateral: View {
     var nos: [No] {
         var r: [No] = []
         for s in modelo.secoes {
+            // seção aninhada dentro de um item do grupo atual (`[t.sub]`, `tarefas[0].ambiente`): fica no grupo
+            if case .grupo(let g, var itens)? = r.last, let lista = itens.first?.caminho.dropLast(),
+               s.caminho.count > lista.count + 1, s.caminho.starts(with: lista) {
+                itens.append(s)
+                r[r.count - 1] = .grupo(g, itens)
+                continue
+            }
             if let g = s.grupo {
                 if case .grupo(let atual, var itens)? = r.last, atual == g, s.indiceItem ?? 0 > 0 {
                     itens.append(s)
@@ -101,8 +108,14 @@ struct BarraLateral: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .selectionDisabled()
+                        let nivel = (itens.first?.caminho.count ?? 0)
                         ForEach(itens) { s in
-                            linha(s, icone: nil).padding(.leading, 18)
+                            if s.caminho.count == nivel {
+                                linha(s, icone: nil).padding(.leading, 18)
+                            } else {
+                                linha(s, icone: nil, titulo: s.grupo.map { "\($0) › \(s.titulo)" } ?? s.titulo)
+                                    .padding(.leading, 34)
+                            }
                         }
                     }
                 }
@@ -111,15 +124,15 @@ struct BarraLateral: View {
         .listStyle(.sidebar)
         .overlay {
             if modelo.secoes.isEmpty {
-                Text(modelo.edicao.documento == nil ? "Arquivo com erro de TOML" : "Arquivo vazio")
+                Text(modelo.edicao.documento == nil ? "Arquivo com erro de \(modelo.formato.nome)" : "Arquivo vazio")
                     .foregroundStyle(.secondary).font(.callout)
             }
         }
     }
 
-    func linha(_ s: Secao, icone: String?) -> some View {
+    func linha(_ s: Secao, icone: String?, titulo: String? = nil) -> some View {
         HStack {
-            if let icone { Label(s.titulo, systemImage: icone) } else { Text(s.titulo) }
+            if let icone { Label(titulo ?? s.titulo, systemImage: icone) } else { Text(titulo ?? s.titulo).lineLimit(1) }
             Spacer()
             if s.campos.contains(where: { modelo.alterados.contains($0.id) }) {
                 Circle().fill(.tint).frame(width: 6, height: 6).help("Seção com alterações não salvas")
@@ -137,7 +150,7 @@ struct Formulario: View {
     var body: some View {
         if modelo.edicao.documento == nil {
             ContentUnavailableView {
-                Label("O arquivo não é TOML válido", systemImage: "exclamationmark.triangle")
+                Label("O arquivo não é \(modelo.formato.nome) válido", systemImage: "exclamationmark.triangle")
             } description: {
                 Text(modelo.edicao.erro.map { "Linha \($0.linha), coluna \($0.coluna): \($0.mensagem)" } ?? "")
             } actions: {
@@ -147,7 +160,9 @@ struct Formulario: View {
             Form {
                 Section {
                     if s.campos.isEmpty {
-                        Text("Esta tabela não tem valores próprios. Para criar chaves, use o modo Texto.")
+                        Text(modelo.formato == .json
+                             ? "Este objeto não tem valores próprios. Para criar chaves, use o modo Texto."
+                             : "Esta tabela não tem valores próprios. Para criar chaves, use o modo Texto.")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(s.campos) { c in
