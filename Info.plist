@@ -29,7 +29,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Ferramenta pessoal km-*. Casos de teste do toml-test e da JSONTestSuite sob licença MIT.</string>
+	<string>Ferramenta pessoal km-*. Casos de teste do toml-test, da JSONTestSuite e do json5-tests sob licença MIT.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -57,6 +57,20 @@
 			<array>
 				<string>public.json</string>
 				<string>br.com.kogut.km-conf.jsonc</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>Documento</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Documento JSON5</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>br.com.kogut.km-conf.json5</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
@@ -101,7 +115,11 @@
 		</dict>
 		<dict>
 			<!-- O macOS não declara JSONC (a extensão .jsonc fica com um tipo "dinâmico").
-			     Declaração importada: se outro app declarar o tipo, a dele vale. -->
+			     Declaração importada: se outro app declarar o tipo, a dele vale.
+			     Derivado de public.plain-text, e não de public.json: assim o Spotlight indexa o
+			     conteúdo (importador RichText; public.json fica sem importador) e o "Abrir com"
+			     oferece os editores de texto. Também evita que programas que só leem JSON
+			     estrito se ofereçam para abrir. Testado no macOS 26 (ver README). -->
 			<key>UTTypeIdentifier</key>
 			<string>br.com.kogut.km-conf.jsonc</string>
 			<key>UTTypeDescription</key>
@@ -115,6 +133,28 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>jsonc</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<!-- JSON5 (spec.json5.org): mesmo raciocínio do JSONC. -->
+			<key>UTTypeIdentifier</key>
+			<string>br.com.kogut.km-conf.json5</string>
+			<key>UTTypeDescription</key>
+			<string>JSON5</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>json5</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/json5</string>
 				</array>
 			</dict>
 		</dict>

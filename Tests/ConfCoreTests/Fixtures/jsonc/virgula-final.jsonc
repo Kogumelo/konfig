@@ -1,0 +1,17 @@
+{
+  "lista": [1, 2, 3,],
+  "listaVariasLinhas": [
+    "a",
+    "b",
+  ],
+  "objeto": {"x": 1, "y": 2,},
+  "objetoVariasLinhas": {
+    "x": 1,
+    "y": [true, false,],
+  },
+  "aninhada": [[1,], [2, 3,],],
+  "comComentario": [
+    10, // dez
+    20, /* vinte */
+  ],
+}

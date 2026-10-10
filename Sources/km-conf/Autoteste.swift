@@ -4,8 +4,10 @@ import ConfCore
 /// `KM_CONF_AUTOTESTE="<arquivo>|<pasta-de-saída>" km-conf.app/Contents/MacOS/km-conf`
 ///
 /// O arquivo é uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
-/// `exemplos/config.jsonc` ou `exemplos/.env`, com o mesmo nome (o roteiro de cada
-/// formato conta com os campos desses exemplos; o `.env` é reconhecido pelo nome).
+/// `exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5` ou
+/// `exemplos/.env`, com o mesmo nome, ou de `config.jsonc` com nome `algo.json` (o
+/// roteiro de cada formato conta com os campos desses exemplos; o `.env` é
+/// reconhecido pelo nome).
 ///
 /// Diagnóstico sem teclado: abre o arquivo, altera valores pelo mesmo caminho
 /// dos controles, salva pela ação do ⌘S (`saveDocument:`), desfaz pela do ⌘Z
@@ -52,7 +54,30 @@ enum Autoteste {
 
     static func roteiro(_ arquivo: URL) -> Roteiro {
         switch Formato(nomeArquivo: arquivo.lastPathComponent) {
-        case .json? where arquivo.pathExtension.lowercased() == "jsonc":
+        case .json? where arquivo.lastPathComponent.lowercased().hasPrefix("settings"):
+            // exemplos/settings.jsonc, no estilo do settings.json do VS Code (chaves com ponto)
+            return Roteiro(nomeFormato: "JSONC",
+                           secao: "raiz",
+                           escolha: ("\"editor.wordWrap\"", ["off", "on", "wordWrapColumn", "bounded"]),
+                           alteracoes: [
+                               ("\"editor.fontSize\"", .inteiro(16)),
+                               ("\"editor.rulers\"", .lista([.inteiro(80), .inteiro(100), .inteiro(120)])),
+                               ("\"editor.wordWrap\"", .texto("on")),
+                           ],
+                           pool: (.inteiro(14), .inteiro(18)),
+                           textoInvalido: { $0.replacingOccurrences(of: "\"editor.fontSize\": 14,", with: "\"editor.fontSize\": ,") },
+                           textoValido: { $0.replacingOccurrences(of: "\"editor.fontSize\": 14,", with: "\"editor.fontSize\": 14,\n  \"novo\": 1,") },
+                           caminhoNovo: [.chave("novo")],
+                           externo: ("\"editor.fontSize\": 14", "\"editor.fontSize\": 18"))
+        case .json5?:
+            return Roteiro(nomeFormato: "JSON5",
+                           textoInvalido: { $0.replacingOccurrences(of: "versao: 3,", with: "versao: ,") },
+                           textoValido: { $0.replacingOccurrences(of: "versao: 3,", with: "versao: 3,\n  novo: 1,") },
+                           caminhoNovo: [.chave("novo")],
+                           externo: ("pool: 12", "pool: 30"))
+        // `config.jsonc`, ou uma cópia dele com nome `.json` (então a janela mostra o aviso "JSON com comentários")
+        case .json? where arquivo.pathExtension.lowercased() == "jsonc"
+            || (try? LeitorJSON.ler([UInt8](Data(contentsOf: arquivo))))?.usaExtensoesJSONC == true:
             return Roteiro(nomeFormato: "JSONC",
                            textoInvalido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": ,") },
                            textoValido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": 3,\n  \"novo\": 1,") },
@@ -143,6 +168,8 @@ enum Autoteste {
         passo(1.5) {
             registra(janela?.isVisible == true, "janela aberta: \(janela?.title ?? "-")")
             registra(m.edicao.documento?.nomeFormato == r.nomeFormato, "lido como \(r.nomeFormato)")
+            registra(m.avisoJSONC == (arquivo.pathExtension.lowercased() == "json" && r.nomeFormato == "JSONC"),
+                     "aviso 'JSON com comentários' \(m.avisoJSONC ? "mostrado" : "não mostrado")")
             registra((try? m.edicao.resultado()).map { Data($0) } == original, "abrir sem alterar: mesmos bytes")
             m.selecao = r.secao
         }
@@ -179,7 +206,7 @@ enum Autoteste {
         for _ in 0..<3 { passo { comoEvento(doc) { doc.undoManager?.undo() } } }
         passo(0.5) {
             let pool = r.alteracoes[0].campo
-            registra(m.edicao.valor(campo(pool)!.caminho) == r.pool.original, "⌘Z desfez \(pool) (20 → 12)")
+            registra(m.edicao.valor(campo(pool)!.caminho) == r.pool.original, "⌘Z desfez \(pool) (volta a \(r.pool.original))")
             registra(m.trechos.count == 3, "depois do ⌘Z, as 3 linhas voltam a ficar pendentes em relação ao disco")
             NSApp.sendAction(#selector(NSDocument.save(_:)), to: doc, from: nil)
         }
@@ -208,7 +235,7 @@ enum Autoteste {
         }
         passo(3) {
             registra(m.edicao.valor(campo(r.alteracoes[0].campo)?.caminho ?? []) == r.pool.externo,
-                     "arquivo alterado por outro programa e sem edição pendente: recarregado (pool = 30)")
+                     "arquivo alterado por outro programa e sem edição pendente: recarregado (\(r.externo.para))")
             if r.secao != "raiz" { m.selecao = "banco" }
         }
         passo(0.8) {

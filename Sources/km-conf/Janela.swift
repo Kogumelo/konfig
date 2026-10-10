@@ -122,6 +122,18 @@ struct BarraLateral: View {
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
+            if modelo.avisoJSONC {
+                Label("JSON com comentários", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .help("Este .json tem comentários ou vírgula final (JSONC, como o settings.json do VS Code "
+                          + "e o tsconfig.json). O km-conf mantém tudo ao gravar, mas nem todo programa que lê "
+                          + "JSON aceita esse arquivo.")
+            }
+        }
         .overlay {
             if modelo.secoes.isEmpty {
                 Text(modelo.edicao.documento == nil ? "Arquivo com erro de \(modelo.formato.nome)" : "Arquivo vazio")
@@ -160,7 +172,7 @@ struct Formulario: View {
             Form {
                 Section {
                     if s.campos.isEmpty {
-                        Text(modelo.formato == .json
+                        Text(modelo.formato.ehJSON
                              ? "Este objeto não tem valores próprios. Para criar chaves, use o modo Texto."
                              : modelo.formato == .env
                              ? "O arquivo não tem variáveis. Para criar, use o modo Texto."

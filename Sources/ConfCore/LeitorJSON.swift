@@ -1,10 +1,15 @@
 import Foundation
 
-/// Leitor de JSON (RFC 8259) e JSONC que guarda a posição (em bytes UTF-8) de cada valor.
+/// Leitor de JSON (RFC 8259), JSONC e JSON5 que guarda a posição (em bytes UTF-8) de cada valor.
 ///
 /// JSONC é JSON com comentários `//` e `/* */` e vírgula depois do último item
 /// (o dialeto de `tsconfig.json` e `.vscode/settings.json`). Por padrão o leitor
-/// aceita os dois; com `estrito: true`, só JSON puro. JSON5 não é aceito.
+/// aceita os dois; com `estrito: true`, só JSON puro.
+///
+/// JSON5 (spec.json5.org, versão 1.0.0) é lido por `lerJSON5`: além do JSONC, chaves
+/// sem aspas (identificadores), textos com aspas simples e continuação de linha
+/// com `\`, escapes `\x`, `\v`, `\0` e `\'`, números hexadecimais, `Infinity`,
+/// `NaN`, `+1`, `.5`, `5.` e mais tipos de espaço em branco.
 ///
 /// Como no TOML, cada membro de objeto vira uma `Entrada` (com o intervalo do
 /// valor e os comentários acima e no fim da linha); objetos aninhados e objetos
@@ -15,7 +20,21 @@ public enum LeitorJSON {
     public static let profundidadeMaxima = 128
 
     public static func ler(_ bytes: [UInt8], estrito: Bool = false) throws(ErroLeitura) -> DocumentoConf {
-        try AnalisadorJSON(bytes, estrito: estrito).documento()
+        try AnalisadorJSON(bytes, estrito: estrito, json5: false).documento()
+    }
+
+    /// Lê um arquivo JSON5.
+    public static func lerJSON5(_ bytes: [UInt8]) throws(ErroLeitura) -> DocumentoConf {
+        try AnalisadorJSON(bytes, estrito: false, json5: true).documento()
+    }
+
+    public static func lerJSON5(_ texto: String) throws(ErroLeitura) -> DocumentoConf {
+        try lerJSON5(Array(texto.utf8))
+    }
+
+    /// Lê um valor JSON5 isolado, como `[0x10, 'a']`.
+    public static func lerValorJSON5(_ texto: String) throws(ErroLeitura) -> Valor {
+        try lerJSON5(Array(texto.utf8)).valorRaiz
     }
 
     public static func ler(_ texto: String, estrito: Bool = false) throws(ErroLeitura) -> DocumentoConf {
@@ -34,6 +53,7 @@ private let LF: UInt8 = 0x0A, CR: UInt8 = 0x0D, TAB: UInt8 = 0x09, ESP: UInt8 = 
 private let ASPA: UInt8 = 0x22, BARRA_INV: UInt8 = 0x5C, BARRA: UInt8 = 0x2F, ASTER: UInt8 = 0x2A
 private let ABRE_COL: UInt8 = 0x5B, FECHA_COL: UInt8 = 0x5D, ABRE_CH: UInt8 = 0x7B, FECHA_CH: UInt8 = 0x7D
 private let DOIS_PONTOS: UInt8 = 0x3A, VIRG: UInt8 = 0x2C, MENOS: UInt8 = 0x2D, PONTO: UInt8 = 0x2E
+private let APOS: UInt8 = 0x27, MAIS: UInt8 = 0x2B
 
 @inline(__always) private func ehDigito(_ c: UInt8) -> Bool { c >= 0x30 && c <= 0x39 }
 
@@ -109,6 +129,7 @@ private struct Lacuna {
 private final class AnalisadorJSON {
     let b: [UInt8]
     let estrito: Bool
+    let json5: Bool
     let inicio: Int
     var p = 0
     var usouExtensao = false
@@ -119,9 +140,12 @@ private final class AnalisadorJSON {
         return r
     }()
 
-    init(_ bytes: [UInt8], estrito: Bool) {
+    var formato: Formato { json5 ? .json5 : .json }
+
+    init(_ bytes: [UInt8], estrito: Bool, json5: Bool) {
         b = bytes
         self.estrito = estrito
+        self.json5 = json5
         inicio = bytes.starts(with: [0xEF, 0xBB, 0xBF]) ? 3 : 0
     }
 
@@ -148,7 +172,7 @@ private final class AnalisadorJSON {
         if l == 0 { ini = max(ini, inicio) }
         var col = 1
         if ini < o { for i in ini..<o where b[i] & 0xC0 != 0x80 { col += 1 } }
-        return ErroLeitura(mensagem: msg, linha: l + 1, coluna: col, deslocamento: o, formato: .json)
+        return ErroLeitura(mensagem: msg, linha: l + 1, coluna: col, deslocamento: o, formato: formato)
     }
 
     func descreve(_ c: UInt8?) -> String {
@@ -202,6 +226,7 @@ private final class AnalisadorJSON {
     // MARK: Espaços e comentários
 
     func extensao(_ o_que: String, em off: Int) throws(ErroLeitura) {
+        if json5 { return }
         if estrito { throw erro("\(o_que) não é permitido em JSON puro (só em JSONC)", em: off) }
         usouExtensao = true
     }
@@ -211,15 +236,26 @@ private final class AnalisadorJSON {
         var r = Lacuna()
         var quebras = 0
         while let c = atual {
-            if c == ESP || c == TAB || c == CR { p += 1; continue }
+            if c == ESP || c == TAB { p += 1; continue }
+            if c == CR {
+                // JSON5 aceita CR sozinho como quebra de linha
+                if json5 && olha(1) != LF { quebras += 1 }
+                p += 1
+                continue
+            }
             if c == LF { quebras += 1; p += 1; continue }
+            if json5, let e = espacoJSON5() {
+                if e.quebra { quebras += 1 }
+                p += e.tamanho
+                continue
+            }
             guard c == BARRA, olha(1) == BARRA || olha(1) == ASTER else { break }
             let ini = p
             try extensao("comentário", em: ini)
             var linhas: [String]
             if olha(1) == BARRA {
                 p += 2
-                while let d = atual, d != LF, d != CR { p += 1 }
+                while let d = atual, d != LF, d != CR, !(json5 && separadorUnicode(p)) { p += 1 }
                 var t = b[(ini + 2)..<p]
                 while t.first == BARRA { t = t.dropFirst() }
                 linhas = [String(decoding: t, as: UTF8.self).trimmingCharacters(in: .whitespaces)]
@@ -250,6 +286,33 @@ private final class AnalisadorJSON {
         return r
     }
 
+    /// U+2028 ou U+2029 (separador de linha e de parágrafo) em `i`.
+    func separadorUnicode(_ i: Int) -> Bool {
+        i + 2 < b.count && b[i] == 0xE2 && b[i + 1] == 0x80 && (b[i + 2] == 0xA8 || b[i + 2] == 0xA9)
+    }
+
+    /// Espaço em branco que só o JSON5 aceita (tabulação vertical, avanço de página,
+    /// U+00A0, U+FEFF, a categoria Zs e os separadores U+2028/U+2029), com o tamanho em bytes.
+    func espacoJSON5() -> (tamanho: Int, quebra: Bool)? {
+        guard let c = atual else { return nil }
+        if c == 0x0B || c == 0x0C { return (1, false) }
+        guard c >= 0xC2, let (u, tam) = escalar(em: p) else { return nil }
+        if u.value == 0x2028 || u.value == 0x2029 { return (tam, true) }
+        if u.value == 0xFEFF || u.properties.generalCategory == .spaceSeparator { return (tam, false) }
+        return nil
+    }
+
+    /// O escalar Unicode que começa em `i` (o texto já foi validado como UTF-8).
+    func escalar(em i: Int) -> (Unicode.Scalar, Int)? {
+        guard i < b.count else { return nil }
+        let c = b[i]
+        let tam = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4
+        guard i + tam <= b.count else { return nil }
+        var v = UInt32(tam == 1 ? c : tam == 2 ? c & 0x1F : tam == 3 ? c & 0x0F : c & 0x07)
+        for k in 1..<tam { v = (v << 6) | UInt32(b[i + k] & 0x3F) }
+        return Unicode.Scalar(v).map { ($0, tam) }
+    }
+
     /// Primeiro comentário na mesma linha em que terminou o elemento anterior (em `fimDoAnterior`).
     func comentarioNaLinha(_ l: Lacuna, depoisDe fimDoAnterior: Int) -> String? {
         for c in l.comentarios where !c.proprioLinha {
@@ -276,12 +339,15 @@ private final class AnalisadorJSON {
 
         /// Depois de `{` ou `,` num objeto: chave, `:` e espaços até o valor.
         func chave(_ a: inout Aberto, _ lac: Lacuna) throws(ErroLeitura) {
-            guard atual == ASPA else {
-                throw erro(atual == 0x27 ? "chave entre aspas simples não é JSON; use aspas duplas"
+            let kIni = p
+            if atual == ASPA || (json5 && atual == APOS) {
+                a.pendente.chave = try texto()
+            } else if json5 {
+                a.pendente.chave = try identificador()
+            } else {
+                throw erro(atual == APOS ? "chave entre aspas simples não é JSON; use aspas duplas"
                            : "esperada chave entre aspas, encontrado \(descreve(atual))")
             }
-            let kIni = p
-            a.pendente.chave = try texto()
             a.pendente.intervaloChave = kIni..<p
             a.pendente.acima = lac.acima
             _ = try lacuna()
@@ -367,11 +433,19 @@ private final class AnalisadorJSON {
                 n.valor = .texto(try texto())
                 n.intervalo = ini..<p
                 pronto = n
-            case MENOS, 0x30...0x39: pronto = try numero()
+            case APOS where json5:
+                let n = NoJSON(.escalar)
+                let ini = p
+                n.valor = .texto(try texto())
+                n.intervalo = ini..<p
+                pronto = n
+            case MENOS, 0x30...0x39: pronto = json5 ? try numeroJSON5() : try numero()
+            case MAIS where json5, PONTO where json5, 0x49 where json5, 0x4E where json5:
+                pronto = try numeroJSON5()
             case 0x74: pronto = try literal("true", .booleano(true))
             case 0x66: pronto = try literal("false", .booleano(false))
             case 0x6E: pronto = try literal("null", .nulo)
-            case 0x27: throw erro("texto entre aspas simples não é JSON; use aspas duplas")
+            case APOS: throw erro("texto entre aspas simples não é JSON; use aspas duplas")
             default: throw erro("valor esperado, encontrado \(descreve(c))")
             }
         }
@@ -421,9 +495,128 @@ private final class AnalisadorJSON {
         return n
     }
 
-    /// Texto entre aspas (o cursor está na aspa de abertura).
+    /// Número JSON5: sinal `+` ou `-` opcional; `Infinity`, `NaN`, hexadecimal `0x…`
+    /// ou decimal com `.5` e `5.` permitidos. Zero à esquerda (`010`) é recusado, como em JSON.
+    func numeroJSON5() throws(ErroLeitura) -> NoJSON {
+        let ini = p
+        var negativo = false
+        if atual == MAIS || atual == MENOS { negativo = atual == MENOS; p += 1 }
+        let n = NoJSON(.escalar)
+        func palavra(_ w: String, _ v: Double) throws(ErroLeitura) -> NoJSON {
+            for u in w.utf8 {
+                guard atual == u else { throw erro("número inválido; esperado '\(w)'", em: ini) }
+                p += 1
+            }
+            n.valor = .decimal(negativo ? -v : v)
+            n.intervalo = ini..<p
+            return n
+        }
+        if atual == 0x49 { return try palavra("Infinity", .infinity) }
+        if atual == 0x4E { return try palavra("NaN", .nan) }
+        if atual == 0x30, olha(1) == 0x78 || olha(1) == 0x58 {
+            p += 2
+            var mag: UInt64 = 0, grande = false, aprox = 0.0
+            let dIni = p
+            while let c = atual, let h = valorHex(c) {
+                aprox = aprox * 16 + Double(h)
+                if mag > (UInt64.max >> 4) { grande = true } else { mag = mag << 4 | UInt64(h) }
+                p += 1
+            }
+            guard p > dIni else { throw erro("número hexadecimal sem dígitos", em: ini) }
+            n.intervalo = ini..<p
+            if !grande, !negativo, mag <= UInt64(Int64.max) { n.valor = .inteiro(Int64(mag)) }
+            else if !grande, negativo, mag <= UInt64(Int64.max) + 1 { n.valor = .inteiro(mag == UInt64(Int64.max) + 1 ? .min : -Int64(mag)) }
+            // não cabe em 64 bits: decimal aproximado, como no JSON
+            else { n.valor = .decimal(negativo ? -aprox : aprox) }
+            return n
+        }
+        var inteira = "", fracao = "", expoente = ""
+        if let c = atual, ehDigito(c) {
+            let dIni = p
+            p += 1
+            if c == 0x30 {
+                if let d = atual, ehDigito(d) { throw erro("número com zero à esquerda não é JSON5", em: ini) }
+            } else {
+                while let d = atual, ehDigito(d) { p += 1 }
+            }
+            inteira = String(decoding: b[dIni..<p], as: UTF8.self)
+        }
+        var inteiro = true
+        if atual == PONTO {
+            p += 1
+            let dIni = p
+            while let d = atual, ehDigito(d) { p += 1 }
+            fracao = String(decoding: b[dIni..<p], as: UTF8.self)
+            inteiro = false
+        }
+        guard !inteira.isEmpty || !fracao.isEmpty else { throw erro("número inválido: falta dígito", em: ini) }
+        if atual == 0x65 || atual == 0x45 {
+            let eIni = p
+            p += 1
+            if atual == MAIS || atual == MENOS { p += 1 }
+            guard let d = atual, ehDigito(d) else { throw erro("número inválido: falta dígito no expoente") }
+            while let d = atual, ehDigito(d) { p += 1 }
+            expoente = String(decoding: b[(eIni + 1)..<p], as: UTF8.self)
+            inteiro = false
+        }
+        n.intervalo = ini..<p
+        let sinal = negativo ? "-" : ""
+        if inteiro, let x = Int64(sinal + inteira) { n.valor = .inteiro(x); return n }
+        let t = sinal + (inteira.isEmpty ? "0" : inteira) + "." + (fracao.isEmpty ? "0" : fracao)
+            + (expoente.isEmpty ? "" : "e" + expoente)
+        n.valor = .decimal(Double(t) ?? .nan)
+        return n
+    }
+
+    /// Chave JSON5 sem aspas: um identificador do ECMAScript 5.1 (letras, `$`, `_`,
+    /// dígitos e marcas depois do primeiro caractere; escapes `\uXXXX` permitidos).
+    func identificador() throws(ErroLeitura) -> String {
+        let ini = p
+        var r = String.UnicodeScalarView()
+        func comeco(_ u: Unicode.Scalar) -> Bool {
+            if u == "$" || u == "_" { return true }
+            switch u.properties.generalCategory {
+            case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter, .letterNumber:
+                return true
+            default: return false
+            }
+        }
+        func parte(_ u: Unicode.Scalar) -> Bool {
+            if comeco(u) || u.value == 0x200C || u.value == 0x200D { return true }
+            switch u.properties.generalCategory {
+            case .nonspacingMark, .spacingMark, .decimalNumber, .connectorPunctuation: return true
+            default: return false
+            }
+        }
+        while p < b.count {
+            let u: Unicode.Scalar, tam: Int
+            if b[p] == BARRA_INV {
+                let esc = p
+                guard olha(1) == 0x75 else { throw erro("na chave sem aspas, só o escape \\uXXXX é permitido", em: esc) }
+                p += 2
+                let v = try hex4(esc)
+                p = esc
+                guard let x = Unicode.Scalar(v), r.isEmpty ? comeco(x) : parte(x) else {
+                    throw erro("escape \\u que não forma um identificador na chave sem aspas", em: esc)
+                }
+                u = x; tam = 6
+            } else {
+                guard let (x, t) = escalar(em: p), r.isEmpty ? comeco(x) : parte(x) else { break }
+                u = x; tam = t
+            }
+            r.append(u)
+            p += tam
+        }
+        if r.isEmpty {
+            throw erro("chave inválida: use aspas ou um identificador (letras, dígitos, _ e $; não pode começar com dígito), encontrado \(descreve(atual))", em: ini)
+        }
+        return String(r)
+    }
+
+    /// Texto entre aspas (o cursor está na aspa de abertura: `"`, ou `'` em JSON5).
     func texto() throws(ErroLeitura) -> String {
         let ini = p
+        let aspa = b[p]
         p += 1
         var r: [UInt8] = []
         func poe(_ v: UInt32) {
@@ -432,10 +625,13 @@ private final class AnalisadorJSON {
         }
         while true {
             guard let c = atual else { throw erro("texto sem aspas de fechamento", em: ini) }
-            if c == ASPA { p += 1; break }
-            if c < 0x20 {
-                throw erro(c == LF || c == CR ? "quebra de linha dentro de texto; use \\n"
-                           : "caractere de controle dentro de texto; use um escape como \\t ou \\u00XX")
+            if c == aspa { p += 1; break }
+            if c == LF || c == CR {
+                throw erro(json5 ? "quebra de linha dentro de texto; use \\n ou \\ no fim da linha"
+                           : "quebra de linha dentro de texto; use \\n")
+            }
+            if c < 0x20 && !json5 {
+                throw erro("caractere de controle dentro de texto; use um escape como \\t ou \\u00XX")
             }
             if c != BARRA_INV { r.append(c); p += 1; continue }
             let esc = p
@@ -468,8 +664,29 @@ private final class AnalisadorJSON {
                 } else {
                     poe(alto)
                 }
+            case APOS where json5: r.append(APOS)
+            case 0x76 where json5: r.append(0x0B)
+            case 0x30 where json5:
+                if let d = atual, ehDigito(d) { throw erro("escape \\0 seguido de dígito não é JSON5", em: esc) }
+                r.append(0)
+            case 0x78 where json5:
+                var v: UInt32 = 0
+                for _ in 0..<2 {
+                    guard let c = atual, let h = valorHex(c) else { throw erro("escape \\x precisa de 2 dígitos hexadecimais", em: esc) }
+                    v = v << 4 | h
+                    p += 1
+                }
+                poe(v)
+            case LF where json5: break                                  // continuação de linha
+            case CR where json5: if atual == LF { p += 1 }              // continuação com CRLF ou CR
+            case 0x31...0x39 where json5:
+                throw erro("escape '\\\(String(UnicodeScalar(e)))' não é permitido em JSON5", em: esc)
             default:
-                throw erro("escape inválido '\\\(String(UnicodeScalar(e)))'", em: esc)
+                guard json5 else { throw erro("escape inválido '\\\(String(UnicodeScalar(e)))'", em: esc) }
+                // qualquer outro caractere escapado vale ele mesmo; U+2028/U+2029 são continuação de linha
+                if separadorUnicode(esc + 1) { p += 2; break }
+                r.append(e)
+                while let d = atual, d & 0xC0 == 0x80 { r.append(d); p += 1 }
             }
         }
         return String(decoding: r, as: UTF8.self)
@@ -494,10 +711,10 @@ private final class AnalisadorJSON {
         try validaUTF8()
         p = inicio
         let antes = try lacuna()
-        guard atual != nil else { throw erro("arquivo sem valor JSON") }
+        guard atual != nil else { throw erro("arquivo sem valor \(formato.nome)") }
         let raiz = try valor()
         _ = try lacuna()
-        if atual != nil { throw erro("texto depois do fim do valor JSON: \(descreve(atual))") }
+        if atual != nil { throw erro("texto depois do fim do valor \(formato.nome): \(descreve(atual))") }
 
         switch raiz.tipo {
         case .objeto:
@@ -512,8 +729,12 @@ private final class AnalisadorJSON {
                                     comentarioFim: raiz.fimAbertura, secao: nil))
         }
         var quebra = "\n"
-        if let i = b.firstIndex(of: LF), i > 0, b[i - 1] == CR { quebra = "\r\n" }
-        return DocumentoConf(formato: .json, bytes: b, raiz: raiz.valor, entradas: entradas, cabecalhos: cabecalhos,
+        if let i = b.firstIndex(of: LF) {
+            if i > 0, b[i - 1] == CR { quebra = "\r\n" }
+        } else if b.contains(CR) {
+            quebra = "\r"
+        }
+        return DocumentoConf(formato: formato, bytes: b, raiz: raiz.valor, entradas: entradas, cabecalhos: cabecalhos,
                              quebraDeLinha: quebra, temBOM: inicio == 3, usaExtensoesJSONC: usouExtensao)
     }
 

@@ -18,7 +18,7 @@ enum App {
     }
 }
 
-/// Decide o tipo do arquivo pelo nome. O macOS não declara `.jsonc` nem `.env` (dá a eles
+/// Decide o tipo do arquivo pelo nome. O macOS não declara `.jsonc`, `.json5` nem `.env` (dá a eles
 /// um tipo "dinâmico", e a um arquivo chamado só `.env`, `public.data`), e a declaração
 /// do `Info.plist` só vale depois que o app é registrado.
 final class ControladorDocumentos: NSDocumentController {
@@ -27,6 +27,7 @@ final class ControladorDocumentos: NSDocumentController {
         switch Formato(nomeArquivo: url.lastPathComponent) {
         case .toml?: return "public.toml"
         case .json?: return "public.json"
+        case .json5?: return "br.com.kogut.km-conf.json5"
         case .env?: return "br.com.kogut.km-conf.env"
         case nil: return try super.typeForContents(of: url)
         }
@@ -44,7 +45,7 @@ extension Formato {
     /// Formato pelo tipo de documento do `Info.plist` (último recurso, sem nome de arquivo).
     init(tipo: String) {
         let t = tipo.lowercased()
-        if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else { self = .toml }
+        if t.contains("json5") { self = .json5 } else if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else { self = .toml }
     }
 }
 
