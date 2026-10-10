@@ -132,3 +132,65 @@ Reabrir só com um fato novo, por exemplo:
 A vantagem que o km-conf já tem e que nenhum concorrente publica é a
 **conformidade verificada contra suítes oficiais** (toml-test e JSONTestSuite). Se
 a ideia voltar, é por aí que ela se diferencia, não por ser a primeira.
+
+## Referências
+
+Todos os links citados no relatório da missão `941f79c0`, consultados em
+2026-10-10.
+
+**fig**
+- Pacotes: <https://crates.io/crates/fig>, <https://crates.io/crates/fig-sys>,
+  <https://docs.rs/crate/fig>; dados de downloads: <https://crates.io/api/v1/crates/fig>
+- Repositório e README ("Every other byte is preserved"): <https://github.com/diaryx-org/fig>
+- API da ponte Rust: <https://github.com/diaryx-org/fig/blob/main/bindings/rust/fig/src/editor.rs>
+- Alvos pré-compilados: <https://github.com/diaryx-org/fig/blob/main/bindings/rust/fig-sys/Cargo.toml>
+- Única issue ("Nightly fuzz run failed"): <https://github.com/diaryx-org/fig/issues/1>
+- Apresentação: <https://ziggit.dev/t/fig-convert-yaml-toml-jsonc-preserve-comments/16555>
+
+**Outras bibliotecas**
+- edikt: <https://crates.io/crates/edikt>, <https://github.com/jhheider/edikt>,
+  <https://crates.io/crates/edikt-yaml>; quem puxa o edikt-core: <https://crates.io/crates/asimov-cli>
+- patchloom: <https://crates.io/crates/patchloom>, <https://github.com/patchloom/patchloom>
+- jsonc-parser: <https://crates.io/crates/jsonc-parser>,
+  <https://docs.rs/jsonc-parser/latest/jsonc_parser/cst/index.html>,
+  <https://docs.rs/jsonc-parser/latest/jsonc_parser/cst/struct.CstObject.html>
+- Uso no Deno: <https://github.com/denoland/deno/blob/main/cli/tools/pm/mod.rs>,
+  <https://github.com/denoland/deno/blob/main/cli/tools/bump_version.rs>
+- JSON5: <https://crates.io/crates/json-five>, <https://crates.io/crates/json5format>,
+  <https://crates.io/crates/monochromatic-jsonc-edit>
+- TOML: <https://crates.io/crates/toml_edit>
+- YAML: <https://crates.io/crates/yaml-edit>, <https://crates.io/crates/yamlpatch>
+- INI: <https://crates.io/crates/ini-roundtrip>, <https://crates.io/crates/ini-preserve>,
+  <https://crates.io/crates/ini-edit>
+- .env: <https://crates.io/crates/envq>
+- Augeas: <https://github.com/hercules-team/augeas>,
+  <https://github.com/hercules-team/augeas/issues/715>,
+  <https://github.com/hercules-team/augeas/issues/699>
+- dasel e yq: <https://github.com/TomWright/dasel>, <https://github.com/mikefarah/yq>
+
+**Sinais de demanda**
+- yq: <https://github.com/mikefarah/yq/issues/515>, <https://github.com/mikefarah/yq/issues/19>,
+  <https://github.com/mikefarah/yq/issues/442>, <https://github.com/mikefarah/yq/issues/2592>,
+  <https://github.com/mikefarah/yq/issues/2536>
+- dasel: <https://github.com/TomWright/dasel/issues/178>
+- jq: <https://github.com/jqlang/jq/issues/1571>
+- Renovate: <https://github.com/renovatebot/renovate/issues/12260>,
+  <https://github.com/renovatebot/renovate/pull/38646>
+- Zed: <https://github.com/zed-industries/zed/issues/40270>
+- Downloads semanais fora do Rust: <https://api.npmjs.org/downloads/point/last-week/jsonc-parser>,
+  <https://pypistats.org/api/packages/tomlkit/recent> (comment-json e ruamel.yaml
+  vieram das mesmas APIs)
+- Hacker News, "Show HN: Yqr": <https://news.ycombinator.com/item?id=48871455>
+- Blog "Respectful" YAML Patching in Rust: <https://verrchu.github.io/blog/2-respectful-yaml-patching-in-rust/>
+
+**Apps visuais**
+- Power TOML Editor: <https://apps.apple.com/us/app/id1587914025>
+  (data da versão: <https://www.iphoneaddict.fr/apps/mac/developpeurs/power-toml-editor.html>)
+- JSON Editor (VDT Labs): <https://apps.apple.com/us/app/json-editor/id567740330?mt=12>
+- Tommy Flyleaf: <https://github.com/excelano/flyleaf>
+- Power YAML Editor: <https://apps.apple.com/us/app/id1565766176>
+- Power JSON Editor: <https://apps.apple.com/app/power-json-editor/id499768540>
+
+**Suítes de teste**
+- toml-test: <https://github.com/toml-lang/toml-test>
+- JSONTestSuite: <https://github.com/nst/JSONTestSuite>
