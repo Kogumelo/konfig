@@ -1,7 +1,8 @@
 # km-conf
 
-Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON** e **JSONC**
-(JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`).
+Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
+(JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`)
+e **.env** (variáveis de ambiente `CHAVE=valor`).
 Abre o arquivo pelo Finder (duplo clique ou "Abrir com"), mostra cada valor num
 campo do tipo certo e, ao salvar, troca no arquivo **só os trechos dos valores
 alterados**: comentários, ordem, espaços, aspas, escapes, forma dos números, CRLF
@@ -11,11 +12,12 @@ Swift/AppKit + SwiftUI, sem dependências. Os leitores são próprios (precisam 
 a posição de cada valor no texto): o de TOML 1.0 passa na suíte oficial
 [toml-test](https://github.com/toml-lang/toml-test); o de JSON passa na
 [JSONTestSuite](https://github.com/nst/JSONTestSuite) (todos os `y_` aceitos, todos
-os `n_` recusados; os `i_` estão em [Limitações](#json-e-jsonc)).
+os `n_` recusados; os `i_` estão em [Limitações](#json-e-jsonc)). O de `.env` segue
+as regras do `dotenv` (Node/Ruby), escritas em [Regras do .env](#regras-do-env).
 
 Parte do ecossistema de utilitários `km-*` (ver também `km-clip`). Chamava-se
-`km-toml`; o nome mudou porque o plano é editar vários formatos. Hoje: TOML, JSON
-e JSONC. Planejados: .env, INI e YAML.
+`km-toml`; o nome mudou porque o plano é editar vários formatos. Hoje: TOML, JSON,
+JSONC e .env. Planejados: INI e YAML (ver [Próximos formatos](#próximos-formatos)).
 
 ## Compilar
 
@@ -45,14 +47,23 @@ docker run --rm -v "$PWD":/src:ro swift:6.0 \
 
 ```sh
 open -a "$PWD/km-conf.app" exemplos/config.toml
+open -a "$PWD/km-conf.app" exemplos/config.json
 open -a "$PWD/km-conf.app" exemplos/config.jsonc
+open -a "$PWD/km-conf.app" exemplos/.env
 # ou
 open km-conf.app --args exemplos/config.toml
 ```
 
-O formato vem da extensão: `.toml`, `.json` ou `.jsonc`. Arquivos `.json` também
-podem ter comentários e vírgula final (como o `tsconfig.json`); o app reconhece e
-mostra "JSONC" no modo Texto.
+O formato vem do nome do arquivo: extensão `.toml`, `.json` ou `.jsonc`; e `.env`
+para o arquivo chamado exatamente `.env`, para `.env.qualquer-coisa` (`.env.local`,
+`.env.production`) e para `qualquer-coisa.env` (`producao.env`). O nome conta mais
+que o tipo que o macOS dá ao arquivo: para `.env` o sistema devolve extensão vazia e
+o tipo genérico `public.data`, e para `.env.local`, a extensão `local` (há um teste
+que confere isso). Arquivos `.json` também podem ter comentários e vírgula final
+(como o `tsconfig.json`); o app reconhece e mostra "JSONC" no modo Texto.
+
+No painel de abrir (⌘O), todo arquivo pode ser escolhido; arquivos que começam com
+ponto (`.env`) ficam ocultos no painel até ⌘⇧. (Comando-Shift-ponto).
 
 (O `open -a` não aceita caminho relativo como `./km-conf.app`; use o caminho completo.)
 
@@ -111,9 +122,13 @@ O app usa o sistema de documentos do macOS, então:
 
 ## Abrir com duplo clique
 
-O app declara que edita `.toml` (tipo `public.toml`), `.json` (`public.json`) e
-`.jsonc` (o macOS não declara este; o app declara `br.com.kogut.km-conf.jsonc`),
-mas **não** se registra como padrão. Para isso:
+O app declara que edita `.toml` (tipo `public.toml`), `.json` (`public.json`),
+`.jsonc` e `.env` (o macOS não declara estes; o app declara
+`br.com.kogut.km-conf.jsonc` e `br.com.kogut.km-conf.env`, derivados de texto puro),
+mas **não** se registra como padrão. O tipo `.env` declarado só cobre nomes como
+`producao.env`: `.env` e `.env.local` não têm extensão `env` para o sistema, então o
+Finder não os associa ao km-conf; abra-os pelo `open -a`, pelo ⌘O do app ou
+arrastando para o ícone. Para associar uma extensão:
 
 1. Copie `km-conf.app` para `/Applications` (opcional, mas assim ele não depende desta pasta).
 2. No Finder, selecione um arquivo da extensão › Arquivo › Obter Informações (⌘I).
@@ -160,6 +175,70 @@ Sem isso, ele aparece em "Abrir com" (botão direito no arquivo).
     inválidas); escape `\u` de surrogate sem par (`"\uD800"`), que não cabe num
     texto Unicode válido; mais de 128 níveis de listas/objetos um dentro do outro.
 
+### .env
+
+- Todo valor é texto e não há seções: o formulário mostra uma seção só, "Variáveis".
+  Um comentário `a | b | c` vira escolha, como no TOML.
+- Linha que o leitor não entende é erro (com linha e coluna), em vez de ser
+  ignorada como no `dotenv`: assim nada some ao gravar. Chave repetida também é
+  erro, para não editar a variável errada.
+- Valor de várias linhas: só entre aspas. Ao editar, o trecho novo usa `\n` (aspas
+  duplas) ou a quebra do arquivo (aspas simples que já ocupavam várias linhas).
+- A coloração do modo Texto é por linha; valores entre aspas de várias linhas
+  ficam coloridos só na primeira.
+- Criar ou apagar variáveis: pelo modo Texto.
+
+### Regras do .env
+
+Não há norma oficial; estas são as regras exatas que o km-conf aceita, escolhidas
+pelo que o `dotenv` do Node e o do Ruby fazem em comum.
+
+- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar).
+  CR sozinho é erro.
+- Cada linha é uma destas:
+  - em branco (só espaços e tabulações);
+  - comentário: `#` no começo (espaços antes são permitidos);
+  - `CHAVE=valor`, com `export ` opcional na frente, espaços e tabulações
+    opcionais no começo da linha e em volta do `=`.
+- Chave: letras ASCII, dígitos, `_`, `.` e `-` (`[A-Za-z0-9_.-]+`). `export=1` é a
+  variável `export`; `export A=1` é a variável `A`.
+- Valor sem aspas: vai até o primeiro `#` ou o fim da linha; espaços e tabulações
+  nas pontas não fazem parte dele (`A = x y  # c` → `x y`). O `#` começa o
+  comentário mesmo colado (`A=abc#def` → `abc`, como no `dotenv`). Valor vazio
+  (`A=`) é texto vazio.
+- `'aspas simples'`: literal, sem escapes; pode ter `#` e ocupar várias linhas.
+- `"aspas duplas"`: escapes `\n` (quebra de linha), `\r`, `\"` e `\\`; qualquer
+  outra barra fica como está (`"c:\pasta"` → `c:\pasta`). Pode ocupar várias linhas.
+- Dentro de aspas, uma quebra CRLF vale como `\n` (como no `dotenv`).
+- Depois das aspas, só espaços e um comentário `#` opcional.
+- Crase (`` ` ``) não é aspas: `` A=`x` `` é o texto `` `x` ``.
+- `${VAR}` e `$VAR` **não** são expandidos: são texto.
+- Comentários em linhas próprias logo acima da variável (sem linha em branco no
+  meio) e o comentário no fim da linha viram a ajuda do campo.
+
+Ao gravar, o tipo de aspas se mantém:
+
+- sem aspas continua sem aspas se o valor novo couber: vazio, ou sem espaço,
+  tabulação, `#`, aspas (`"`, `'`, `` ` ``) nem caracteres de controle. Se não
+  couber, aspas duplas;
+- aspas simples continuam simples se o valor não tiver `'` nem CR (e quebra de
+  linha só se o original já tinha); senão, aspas duplas;
+- aspas duplas continuam duplas: o começo e o fim que não mudaram são copiados
+  byte a byte, e o trecho novo escapa só `\`, `"`, quebra de linha e CR.
+
+### Próximos formatos
+
+A parte própria de cada formato fica em `Formato.swift` (qual leitor, qual escritor
+e o que o formato não aceita) e em um par `LeitorX.swift`/`FormatarX.swift`; `Gravar`,
+`Edicao`, `Campos` e a interface já são comuns. Para acrescentar um formato:
+
+- **INI**: falta escolher um dialeto (não há norma: `;` ou `#`, `:` ou `=`, seções
+  aninhadas com ponto, aspas, continuação de linha, chaves repetidas) e escrever o
+  leitor. O resto (seções `[x]` → `Cabecalho`, valores texto) já existe.
+- **YAML**: leitor grande (estilos de bloco e de fluxo, âncoras, tags, textos `|` e
+  `>`, vários documentos); a gravação de listas que mudam de tamanho precisaria de
+  um escritor de bloco próprio, porque `Formatar.lista` só sabe listas `[ … ]`.
+
 ### Mudanças de nome no código (para quem usa o `ConfCore`)
 
 Os nomes antigos continuam valendo como apelidos:
@@ -170,7 +249,8 @@ Os nomes antigos continuam valendo como apelidos:
 | `EdicaoTOML(bytes)` | `Edicao(bytes, formato:)` (`.toml` por padrão) |
 | `ErroTOML` | `ErroLeitura` (com `formato`; a mensagem diz "TOML inválido" ou "JSON inválido") |
 
-Também: `Formato` (`.toml`, `.json`) despacha ler, ler um valor e escrever;
+Também: `Formato` (`.toml`, `.json`, `.env`) despacha ler, ler um valor e escrever,
+e `Formato(nomeArquivo:)` escolhe pelo nome;
 `Gravar.aplicar(bytes, alteracoes:, formato:)`; `Valor.nulo`; `TipoCampo.cru.nome`
 é "texto cru" e `nome(em: formato)` dá "TOML" ou "JSON".
 
@@ -179,30 +259,38 @@ Também: `Formato` (`.toml`, `.json`) despacha ler, ler um valor e escrever;
 ```
 Package.swift
 Sources/ConfCore/      leitores, modelo e gravação (sem interface)
-  Formato.swift        TOML ou JSON: qual leitor e qual escritor usar
+  Formato.swift        TOML, JSON ou .env: qual leitor e qual escritor usar
   Leitor.swift         TOML 1.0 → estrutura, com intervalo de bytes de cada valor
   LeitorJSON.swift     JSON/JSONC → estrutura, com intervalos e comentários
   Gravar.swift         troca só os trechos alterados, no estilo original (TOML)
   FormatarJSON.swift   escreve valores JSON no estilo do original
+  LeitorEnv.swift      .env → estrutura, com intervalos e comentários
+  FormatarEnv.swift    escreve valores .env mantendo o tipo de aspas
   Campos.swift         estrutura → seções e campos da tela
   Edicao.swift         estado de um arquivo aberto; diferença por linhas
   Modelo.swift         tipos (Valor, DataHora, Entrada, DocumentoConf, …)
 Sources/km-conf/       o app (NSDocument + SwiftUI)
 Tests/ConfCoreTests/   suítes toml-test e JSONTestSuite (Fixtures/, licença MIT),
-                       tsconfig.json de exemplo e testes de gravação
+                       tsconfig.json de exemplo, arquivos .env (Fixtures/env/)
+                       e testes de gravação
 exemplos/config.toml
+exemplos/config.json
 exemplos/config.jsonc
+exemplos/.env
 ```
 
 ### Diagnóstico sem teclado
 
 ```sh
 KM_CONF_AUTOTESTE="/tmp/x/config.toml|/tmp/x/saida" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-json" km-conf.app/Contents/MacOS/km-conf
+KM_CONF_AUTOTESTE="/tmp/x/config.json|/tmp/x/saida-json" km-conf.app/Contents/MacOS/km-conf
+KM_CONF_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-jsonc" km-conf.app/Contents/MacOS/km-conf
+KM_CONF_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" km-conf.app/Contents/MacOS/km-conf
 ```
 
-O arquivo precisa ser uma cópia de `exemplos/config.toml` ou `exemplos/config.jsonc`
-(o roteiro conta com os campos deles). Abre a **cópia** (ele é alterado e depois restaurado), altera três
+O arquivo precisa ser uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
+`exemplos/config.jsonc` ou `exemplos/.env` (o roteiro conta com os campos deles; a
+cópia do `.env` pode se chamar `.env`, `.env.local` ou `algo.env`). Abre a **cópia** (ele é alterado e depois restaurado), altera três
 valores pelo mesmo caminho dos controles, salva, desfaz, testa o modo Texto e a
 recarga por mudança externa, e grava `relatorio.txt` e fotos da janela na pasta
 de saída.

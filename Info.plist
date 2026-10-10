@@ -61,6 +61,20 @@
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Variáveis de ambiente (.env)</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>br.com.kogut.km-conf.env</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>Documento</string>
+		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
@@ -101,6 +115,25 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>jsonc</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<!-- O macOS não declara .env. A extensão só cobre "producao.env"; ".env" (sem
+			     extensão para o sistema) e ".env.local" são reconhecidos pelo nome, no app. -->
+			<key>UTTypeIdentifier</key>
+			<string>br.com.kogut.km-conf.env</string>
+			<key>UTTypeDescription</key>
+			<string>Variáveis de ambiente (.env)</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>env</string>
 				</array>
 			</dict>
 		</dict>

@@ -71,7 +71,7 @@ public struct Campo: Identifiable, Sendable {
 }
 
 /// Uma seção da tela: a raiz, uma `[tabela]` ou um item de `[[lista]]`
-/// (em JSON: um objeto aninhado ou um objeto dentro de uma lista).
+/// (em JSON: um objeto aninhado ou um objeto dentro de uma lista; em .env, só a raiz).
 public struct Secao: Identifiable, Sendable {
     /// Estável enquanto a estrutura do arquivo não muda: "raiz" ou o caminho do cabeçalho.
     public var id: String
@@ -102,7 +102,9 @@ public enum Campos {
         if !raiz.isEmpty || doc.cabecalhos.isEmpty {
             var sub = "chaves fora de qualquer tabela"
             if json { if case .tabela = doc.valorRaiz { sub = "chaves do objeto principal" } else { sub = "valor principal do arquivo" } }
-            r.append(Secao(id: "raiz", titulo: "Raiz", subtitulo: sub, caminho: [], campos: raiz))
+            var titulo = "Raiz"
+            if doc.formato == .env { titulo = "Variáveis"; sub = "CHAVE=valor (todos os valores são texto)" }
+            r.append(Secao(id: "raiz", titulo: titulo, subtitulo: sub, caminho: [], campos: raiz))
         }
         // total de itens por lista de tabelas (mesmo caminho sem o índice final)
         var totais: [Caminho: Int] = [:]
