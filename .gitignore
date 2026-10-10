@@ -1,0 +1,6 @@
+.DS_Store
+
+# Artefatos de compilação — refeitos por ./build.sh
+*.app/
+.build/
+DerivedData/

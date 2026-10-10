@@ -1,0 +1,28 @@
+# Configuração de exemplo
+titulo = "Painel Kogumelo"  # Nome que aparece no topo
+versao = 3
+
+[servidor]
+host = "0.0.0.0"
+portas = [ 8080, 8443 ]
+tls = true  # exige certificado
+# debug | info | aviso | erro
+nivel_log = "info"
+
+[banco]
+# firebird | postgres
+driver = "firebird"
+pool = 12  # conexões simultâneas
+expira = 2026-12-31T23:59:00  # data-hora local, sem fuso
+
+[[tarefas]]
+nome = "backup"
+# minuto hora dia mês dia-da-semana
+cron = "0 3 * * *"
+ativo = true
+
+[[tarefas]]
+nome = "limpar-logs"
+# minuto hora dia mês dia-da-semana
+cron = "0 4 * * 0"
+ativo = false
