@@ -15,6 +15,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
     case env
     /// INI no dialeto descrito em `LeitorINI` (`.ini`, `.editorconfig`).
     case ini
+    /// YAML 1.2, no subconjunto de arquivos de configuração descrito em `LeitorYAML` (`.yaml`, `.yml`).
+    case yaml
 
     /// Formato pela extensão do arquivo (sem o ponto, qualquer caixa).
     public init?(extensao: String) {
@@ -24,6 +26,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case "json5": self = .json5
         case "env": self = .env
         case "ini", "editorconfig": self = .ini
+        case "yaml", "yml": self = .yaml
         default: return nil
         }
     }
@@ -59,6 +62,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json5: return "JSON5"
         case .env: return ".env"
         case .ini: return "INI"
+        case .yaml: return "YAML"
         }
     }
 
@@ -70,6 +74,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json5: return try LeitorJSON.lerJSON5(bytes)
         case .env: return try LeitorEnv.ler(bytes)
         case .ini: return try LeitorINI.ler(bytes)
+        case .yaml: return try LeitorYAML.ler(bytes)
         }
     }
 
@@ -81,6 +86,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         case .json5: return try LeitorJSON.lerValorJSON5(texto)
         case .env: return try LeitorEnv.lerValor(texto)
         case .ini: return try LeitorINI.lerValor(texto)
+        case .yaml: return try LeitorYAML.lerValor(texto)
         }
     }
 
@@ -94,7 +100,14 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
             return FormatarJSON.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra, json5: true)
         case .env: return FormatarEnv.valor(v, posicao: posicao, fonte: fonte, quebra: quebra)
         case .ini: return FormatarINI.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
+        case .yaml: return FormatarYAML.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
         }
+    }
+
+    /// Texto cru digitado para um valor, ajustado ao lugar onde vai ficar (em YAML: o espaço
+    /// depois de `chave:` vazio e o recuo de uma lista em bloco). Nos outros formatos, o próprio texto.
+    public func ajustarCru(_ s: String, posicao: Posicao, fonte: [UInt8]) -> String {
+        self == .yaml ? FormatarYAML.cru(s, posicao: posicao, fonte: fonte) : s
     }
 
     /// Motivo pelo qual o valor não pode ser escrito neste formato, ou `nil` se pode.
@@ -125,6 +138,8 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
                 return nil
             default: return "em INI todo valor é texto"
             }
+        case .yaml:
+            if case .dataHora = v { return "YAML (core schema 1.2) não tem tipo de data; grave como texto" }
         }
         switch v {
         case .lista(let l): return l.lazy.compactMap { problema($0) }.first

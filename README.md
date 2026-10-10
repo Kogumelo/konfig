@@ -3,7 +3,8 @@
 Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
 (JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`),
 **JSON5** (chaves sem aspas, aspas simples, hexadecimal, `Infinity`…), **.env**
-(variáveis de ambiente `CHAVE=valor`) e **INI** (`php.ini`, `.editorconfig`, `desktop.ini`…).
+(variáveis de ambiente `CHAVE=valor`), **INI** (`php.ini`, `.editorconfig`, `desktop.ini`…) e **YAML**
+(o subconjunto dos arquivos de configuração: docker-compose, GitHub Actions, Kubernetes, `pubspec.yaml`, OpenAPI).
 Abre o arquivo pelo Finder (duplo clique ou "Abrir com"), mostra cada valor num
 campo do tipo certo e, ao salvar, troca no arquivo **só os trechos dos valores
 alterados**: comentários, ordem, espaços, aspas, escapes, forma dos números, CRLF
@@ -21,10 +22,13 @@ O de `.env` segue as regras do `dotenv` (Node/Ruby), escritas em [Regras do .env
 O INI não tem norma: o km-conf aceita um dialeto fixo, descrito em [Dialeto INI](#dialeto-ini) e
 testado com arquivos próprios, com `.editorconfig` do projeto EditorConfig e com um trecho do
 `php.ini-production` do PHP (`Tests/ConfCoreTests/Fixtures/ini/`).
+O de YAML é testado com a suíte oficial [yaml-test-suite](https://github.com/yaml/yaml-test-suite)
+(os 192 casos dentro do [subconjunto aceito](#yaml) lidos com os valores esperados, os 94 casos
+inválidos recusados e os 116 que usam o que fica de fora recusados ou lidos sem diferença).
 
 Parte do ecossistema de utilitários `km-*` (ver também `km-clip`). Chamava-se
 `km-toml`; o nome mudou porque o plano é editar vários formatos. Hoje: TOML, JSON,
-JSONC, JSON5, .env e INI. Planejado: YAML (ver [Próximos formatos](#próximos-formatos)).
+JSONC, JSON5, .env, INI e YAML (ver [Próximos formatos](#próximos-formatos)).
 
 ## Compilar
 
@@ -60,11 +64,12 @@ open -a "$PWD/km-conf.app" exemplos/settings.jsonc
 open -a "$PWD/km-conf.app" exemplos/config.json5
 open -a "$PWD/km-conf.app" exemplos/.env
 open -a "$PWD/km-conf.app" exemplos/config.ini
+open -a "$PWD/km-conf.app" exemplos/config.yaml
 # ou
 open km-conf.app --args exemplos/config.toml
 ```
 
-O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc`, `.json5` ou `.ini`
+O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc`, `.json5`, `.ini`, `.yaml` ou `.yml`
 (também o arquivo chamado `.editorconfig`, que é INI); e `.env`
 para o arquivo chamado exatamente `.env`, para `.env.qualquer-coisa` (`.env.local`,
 `.env.production`) e para `qualquer-coisa.env` (`producao.env`). O nome conta mais
@@ -93,7 +98,8 @@ Aberto sem arquivo, o app mostra o painel de abrir.
 
 ### A janela
 
-- **Barra lateral**: a raiz do arquivo, cada `[tabela]` e cada item de
+- **Barra lateral** (em YAML, como em JSON: cada mapa em bloco é uma seção e cada lista
+  de mapas, um grupo): a raiz do arquivo, cada `[tabela]` e cada item de
   `[[lista de tabelas]]` (agrupados pelo nome da lista; o item ganha o nome do
   campo `nome`, `name`, `titulo`, `title` ou `id`, se houver). Em JSON, cada
   objeto `{…}` aninhado é uma seção (com o caminho, como `compilerOptions.paths`)
@@ -121,8 +127,10 @@ Aberto sem arquivo, o app mostra o painel de abrir.
   JSON5: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza; em
   JSON5 também as chaves sem aspas e os textos com aspas simples; em INI: `[seções]`
   em laranja, chaves em azul, comentários `;` e `#` em cinza, valores entre aspas em
-  vermelho, com as mesmas regras de comentário do leitor). O texto só é
-  aplicado ao documento se for válido no formato do arquivo (TOML, JSON/JSONC, JSON5, .env ou INI);
+  vermelho, com as mesmas regras de comentário do leitor; em YAML: chaves em azul,
+  comentários `#` em cinza, textos entre aspas e o conteúdo dos blocos `|`/`>` em vermelho,
+  `---` e `...` em laranja). O texto só é
+  aplicado ao documento se for válido no formato do arquivo (TOML, JSON/JSONC, JSON5, .env, INI ou YAML);
   enquanto não for, o erro aparece com
   linha e coluna e a linha fica marcada. Vale ao voltar para o Formulário (⌘1),
   ao clicar em Aplicar (⌘↩) ou ao salvar. As aspas "inteligentes" do macOS ficam
@@ -178,6 +186,10 @@ arrastando para o ícone. Para associar uma extensão:
 3. Em "Abrir com", escolha km-conf e clique em **Alterar Tudo…**.
 
 Sem isso, ele aparece em "Abrir com" (botão direito no arquivo).
+
+Para YAML não há tipo a declarar: o macOS já tem `public.yaml` (extensões `.yaml` e `.yml`,
+derivado de `public.text`; conferido no macOS 26 com `UTType(filenameExtension:)`). O km-conf
+só diz que o edita, também com papel Editor e `LSHandlerRank` Alternate.
 
 ## Limitações
 
@@ -411,15 +423,130 @@ mudada nestes pontos):
 - **Escapes** em aspas duplas (`\"`, `\n`, `${VAR}` do PHP dentro de aspas): ficam
   como estão no texto (o PHP expande alguns; o km-conf mostra o texto cru).
 
+### YAML
+
+#### Subconjunto aceito
+
+A norma YAML 1.2 completa (âncoras, etiquetas de tipo, vários documentos num arquivo, chaves
+complexas) seria um projeto maior que o resto do app. O km-conf lê o subconjunto que aparece em
+arquivos de configuração:
+
+- **Um documento por arquivo**, com `---` opcional no começo e `...` opcional no fim (depois do
+  `...`, só comentários). Arquivo vazio ou só com comentários é um arquivo sem valores.
+- **Mapas em bloco** (`chave: valor`, aninhados pelo recuo) e **listas em bloco** (`- item`),
+  inclusive lista de mapas (`- nome: x` com as linhas seguintes recuadas), lista no mesmo recuo
+  da chave (`chave:` e na linha de baixo `- a`) e listas e mapas compactos (`- - a`, `- a: 1`).
+  O recuo é só com espaços: tabulação no recuo é erro, como diz a norma. Chave repetida no
+  mesmo mapa é erro (a norma também proíbe).
+- **Valores**: sem aspas (de uma ou várias linhas; as quebras viram espaço e as linhas em branco,
+  `\n`); entre aspas simples (`''` é uma aspa); entre aspas duplas, com todos os escapes da
+  norma (`\n`, `\t`, `\x41`, `\u00e9`, `\U0001F600`, `\N`, `\_`, `\L`, `\P`, quebra escapada…);
+  em bloco, `|` (literal) e `>` (dobrado), com os indicadores de corte `-` e `+` e de recuo `1`–`9`.
+- **Coleções em linha** `[a, b]` e `{a: 1, b}`, também em várias linhas e uma dentro da outra,
+  com par sozinho em lista (`[a: 1]`) e chave sem valor (`{a, b: 1}` tem `a: null`).
+- **Comentários `#`** (com espaço antes): os que estão logo acima de uma chave (sem linha em branco
+  no meio) e o do fim da linha viram a ajuda do campo; `a | b | c` vira lista de opções.
+- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar). CR sozinho e
+  caracteres de controle são recusados.
+
+No formulário: cada mapa em bloco é uma seção e cada lista de mapas um grupo (como em JSON);
+uma lista (em bloco ou em linha) com todos os itens do mesmo tipo simples aparece como
+etiquetas; mapas em linha (`{a: 1}`), listas mistas, listas de listas, valores vazios (`chave:`)
+e `null` aparecem como texto cru (YAML), igual ao TOML.
+
+#### Tipos: o *core schema* do YAML 1.2
+
+Um valor sem aspas tem o tipo que o *core schema* do YAML 1.2 diz, e só esses:
+
+| texto sem aspas | tipo |
+|---|---|
+| `true`, `True`, `TRUE`, `false`, `False`, `FALSE` | sim/não |
+| `null`, `Null`, `NULL`, `~` e o valor vazio | nulo |
+| `12`, `-3`, `+7`, `0x1F`, `0o17` | inteiro (`010` é dez) |
+| `1.5`, `.5`, `1.`, `1e3`, `-2.5E-3`, `.inf`, `-.Inf`, `.nan` | decimal |
+| todo o resto: `yes`, `no`, `on`, `off`, `y`, `n`, `0b101`, `1_000`, `12:30`, `2024-01-31`… | texto |
+
+Entre aspas ou em bloco, é sempre texto. Por que o 1.2 e não o 1.1: é a versão atual da norma
+(2009), a que o próprio YAML recomenda e a que a yaml-test-suite usa; o km-conf não tem como saber
+qual programa vai ler o arquivo, e o 1.2 é o que muda menos o que está escrito (`no` continua
+`no`). Datas não existem no 1.2: `2024-01-31` é texto.
+
+#### Aspas de proteção (leitores YAML 1.1)
+
+Muitos programas ainda leem YAML pela regra antiga, a 1.1 (PyYAML e, com ele, Ansible e
+docker-compose em Python; o `yaml.v2` do Go; o Psych do Ruby): para eles `no`, `off` e `n` são
+**falso**, `on` e `yes` são verdadeiro, `010` é **oito** (octal), `1_000` é mil, `12:30` é 750
+(sexagesimal), `2024-01-31` é uma data. É o caso clássico da Noruega: `pais: NO` vira `pais: false`.
+
+Por isso, **ao gravar um texto sem aspas**, o km-conf põe aspas duplas quando o texto seria lido
+como outro tipo pelo YAML 1.2 **ou** pelo 1.1, mesmo que no 1.2 ele já seja texto:
+
+- sim/não e nulo do 1.1, em qualquer caixa: `y`, `n`, `yes`, `no`, `on`, `off`, `true`, `false`, `null`, `~`, vazio;
+- tudo o que começa com dígito (ou `.` e dígito, depois do sinal) e só tem dígitos, `.`, `:`,
+  `_`, `e`, `x`, `o`, `b`, sinais e letras de `a` a `f`: `1e3`, `010`, `0x1F`, `0b11`, `1_000`,
+  `12:30`, `8080:80`, `1.5`, `1.2.3`;
+- `.inf`, `-.inf`, `.nan`, datas (`2024-01-31…`), `<<` e `=`.
+
+A regra é de propósito larga: aspas a mais não mudam o valor para ninguém; aspas a menos mudam o
+tipo em algum programa. Ela vale só para o texto **gravado pelo km-conf**: um `pais: no` que já está
+no arquivo é lido como texto (YAML 1.2) e não é tocado se o campo não for editado.
+
+#### Fora do subconjunto: abre só no modo Texto
+
+Âncoras e aliases (`&base`, `*base`), mesclagem (`<<:`), etiquetas (`!!str`, `!Ref`, `!!binary`),
+vários documentos no arquivo, chaves complexas (`? chave`, `[a, b]: x`), chave vazia ou nula
+(`: x`, `~: x`) e diretivas (`%YAML`, `%TAG`) ficam de fora. Um arquivo com qualquer um deles **abre
+só no modo Texto**, com o aviso dizendo o que não é aceito e em que linha (por exemplo "linha 3:
+âncora (&) está fora do subconjunto que o km-conf edita pelo formulário"). O formulário fica
+indisponível; o texto pode ser editado e salvo, e é gravado como está (com o `.bak`), sem a
+releitura e conferência que o formulário faz. Se o texto ficar dentro do subconjunto, o formulário
+volta a funcionar; erro de sintaxe de verdade continua impedindo aplicar e salvar.
+
+Por que abrir no modo Texto em vez de recusar: são arquivos YAML válidos e comuns (âncoras em
+docker-compose e GitHub Actions, `!Ref` no CloudFormation); recusar obrigaria a abrir em outro
+editor para mudar uma linha. Por que não no formulário: com um alias, mudar o valor da âncora
+mudaria vários lugares ao mesmo tempo, e uma etiqueta muda o tipo do valor — o formulário mostraria
+algo diferente do que o programa lê. O leitor nunca ignora esses recursos em silêncio: ao encontrar
+um deles, para e avisa. (Um arquivo inválido que também usa um desses recursos pode receber o
+mesmo aviso em vez do erro de sintaxe — na yaml-test-suite, 22 dos 94 casos inválidos; nos dois
+casos o formulário não abre.)
+
+#### Gravação
+
+- Só o trecho do valor alterado muda. O tipo de aspas se mantém: sem aspas continua sem aspas
+  quando cabe; aspas simples continuam simples; aspas duplas continuam duplas; bloco `|`/`>`
+  continua bloco, com o mesmo recuo, o mesmo indicador de recuo e o comentário do cabeçalho.
+- Precisa de aspas (duplas) o texto vazio ou com espaço nas pontas, com `: ` ou ` #`, terminado em
+  `:`, começado por indicador (`- `, `?`, `:`, `,`, `[`, `]`, `{`, `}`, `#`, `&`, `*`, `!`, `|`, `>`,
+  `'`, `"`, `%`, `@`, `` ` ``), com quebra de linha, tabulação ou controle — e os das
+  [aspas de proteção](#aspas-de-proteção-leitores-yaml-11). Dentro de `[ ]`, também com `,[]{}`.
+- Em bloco, o indicador de corte acompanha o texto novo: sem quebra no fim, `|-`; com uma, `|`;
+  com mais de uma, `|+`. Num `>`, cada quebra vira uma linha em branco; se alguma linha começar
+  com espaço (que o `>` não dobra), o bloco vira `|`. Se a primeira linha começar com espaço e não
+  houver indicador de recuo, ou o texto tiver controles, vai entre aspas duplas.
+- **Lista em bloco** que muda de tamanho: item a mais é uma linha nova (`- valor`) logo depois do
+  último item, com o recuo e o `- ` dele e as aspas do último item do mesmo tipo; item a menos é a
+  linha dele que sai (os comentários das outras linhas ficam). Lista que fica vazia vira `[]`.
+- **Lista em linha** que muda de tamanho: como no TOML e no JSON (reescrita com o estilo do
+  primeiro item; comentários dentro dela se perdem).
+- Número continua na mesma forma (`0x`, `0o`, `+`, expoente, casas decimais); `True` continua
+  com maiúscula; `.Inf` continua `.Inf`. YAML (core schema) não tem data: um valor de data é recusado.
+- Valor vazio (`chave:`) recebe um espaço antes do valor novo (`chave: novo`).
+
+Limitações: chaves não são reescritas (para renomear, use o modo Texto); comentários dentro de
+coleções em linha não viram ajuda; um texto sem aspas de várias linhas, ao ser editado, é gravado
+numa linha só; uma lista em bloco com itens compactos (`- - a`) que muda de tamanho é reescrita em
+linha; a coloração do modo Texto é por linha (um texto entre aspas de várias linhas fica colorido
+só na primeira).
+
 ### Próximos formatos
 
 A parte própria de cada formato fica em `Formato.swift` (qual leitor, qual escritor
 e o que o formato não aceita) e em um par `LeitorX.swift`/`FormatarX.swift`; `Gravar`,
 `Edicao`, `Campos` e a interface já são comuns. Para acrescentar um formato:
 
-- **YAML**: leitor grande (estilos de bloco e de fluxo, âncoras, tags, textos `|` e
-  `>`, vários documentos); a gravação de listas que mudam de tamanho precisaria de
-  um escritor de bloco próprio, porque `Formatar.lista` só sabe listas `[ … ]`.
+- **YAML completo** (âncoras, etiquetas, vários documentos): exigiria editar valores que
+  aparecem em vários lugares ao mesmo tempo; hoje esses arquivos abrem só no modo Texto.
 
 ### Mudanças de nome no código (para quem usa o `ConfCore`)
 
@@ -431,11 +558,14 @@ Os nomes antigos continuam valendo como apelidos:
 | `EdicaoTOML(bytes)` | `Edicao(bytes, formato:)` (`.toml` por padrão) |
 | `ErroTOML` | `ErroLeitura` (com `formato`; a mensagem diz "TOML inválido" ou "JSON inválido") |
 
-Também: `Formato` (`.toml`, `.json`, `.json5`, `.env`, `.ini`; `ehJSON` para os dois JSON)
+Também: `Formato` (`.toml`, `.json`, `.json5`, `.env`, `.ini`, `.yaml`; `ehJSON` para os dois JSON)
 despacha ler, ler um valor e escrever (`LeitorJSON.lerJSON5` para JSON5),
 e `Formato(nomeArquivo:)` escolhe pelo nome;
 `Gravar.aplicar(bytes, alteracoes:, formato:)`; `Valor.nulo`; `TipoCampo.cru.nome`
 é "texto cru" e `nome(em: formato)` dá "TOML" ou "JSON".
+Com o YAML: `ErroLeitura.foraDoSubconjunto` (arquivo válido que só pode ser editado como texto),
+`Edicao.somenteTexto` e `trocarTexto` aceitando esse texto, e `Formato.ajustarCru` (o texto cru
+digitado é ajustado ao lugar antes de gravar; nos outros formatos, não muda nada).
 
 ## Organização
 
@@ -451,6 +581,8 @@ Sources/ConfCore/      leitores, modelo e gravação (sem interface)
   FormatarEnv.swift    escreve valores .env mantendo o tipo de aspas
   LeitorINI.swift      INI → estrutura (seções, listas `chave[]`), com intervalos e comentários
   FormatarINI.swift    escreve valores INI mantendo as aspas; acrescenta/tira linhas de listas
+  LeitorYAML.swift     YAML (subconjunto de configuração) → estrutura, com intervalos e comentários
+  FormatarYAML.swift   escreve valores YAML no estilo do original; aspas de proteção; listas em bloco
   Campos.swift         estrutura → seções e campos da tela
   Edicao.swift         estado de um arquivo aberto; diferença por linhas
   Modelo.swift         tipos (Valor, DataHora, Entrada, DocumentoConf, …)
@@ -459,7 +591,8 @@ Tests/ConfCoreTests/   suítes toml-test, JSONTestSuite e json5-tests (Fixtures/
                        licença MIT), tsconfig.json de exemplo, arquivos JSONC
                        (Fixtures/jsonc/), .env (Fixtures/env/), INI (Fixtures/ini/:
                        próprios, .editorconfig do EditorConfig e trecho do php.ini,
-                       licenças MIT e BSD ao lado) e testes de gravação
+                       licenças MIT e BSD ao lado), yaml-test-suite (Fixtures/yaml/,
+                       licença MIT, ORIGEM.txt com o commit) e testes de gravação
 exemplos/config.toml
 exemplos/config.json
 exemplos/config.jsonc
@@ -467,6 +600,7 @@ exemplos/settings.jsonc
 exemplos/config.json5
 exemplos/.env
 exemplos/config.ini    (com CRLF)
+exemplos/config.yaml   (no estilo de um docker-compose)
 ```
 
 ### Diagnóstico sem teclado
@@ -479,15 +613,18 @@ KM_CONF_AUTOTESTE="/tmp/x/settings.jsonc|/tmp/x/saida-settings" km-conf.app/Cont
 KM_CONF_AUTOTESTE="/tmp/x/config.json5|/tmp/x/saida-json5" km-conf.app/Contents/MacOS/km-conf
 KM_CONF_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" km-conf.app/Contents/MacOS/km-conf
 KM_CONF_AUTOTESTE="/tmp/x/config.ini|/tmp/x/saida-ini" km-conf.app/Contents/MacOS/km-conf
+KM_CONF_AUTOTESTE="/tmp/x/config.yaml|/tmp/x/saida-yaml" km-conf.app/Contents/MacOS/km-conf
 ```
 
 O arquivo precisa ser uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
 `exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5`,
-`exemplos/.env` ou `exemplos/config.ini` (o roteiro conta com os campos deles; a cópia do `.env` pode se
+`exemplos/.env`, `exemplos/config.ini` ou `exemplos/config.yaml` (o roteiro conta com os campos deles; a cópia do `.env` pode se
 chamar `.env`, `.env.local` ou `algo.env`; uma cópia do `config.jsonc` com nome
 `algo.json` testa o aviso "JSON com comentários"). Abre a **cópia** (ele é alterado e depois restaurado), altera três
 valores pelo mesmo caminho dos controles, salva, desfaz, testa o modo Texto e a
 recarga por mudança externa, e grava `relatorio.txt` e fotos da janela na pasta
 de saída. No INI, também acrescenta um item na lista `extensoes[]` (confere que é uma
 linha nova e nada mais) e desfaz; uma cópia do `config.ini` chamada `.editorconfig`
-confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`).
+confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`). No YAML, faz o mesmo com a lista
+em bloco `services.web.ports` e confere que um texto com âncora dá aviso de "fora do subconjunto"
+(não erro) no modo Texto.

@@ -1,0 +1,9 @@
+Casos copiados de https://github.com/yaml/yaml-test-suite (licença MIT: ver LICENSE nesta pasta),
+release de dados data-2022-01-17, commit 6e6c296ae9c9d2d5c4134b4b64d01b29ac19ff6f.
+Licença copiada do ramo main, commit da267a5c4782e7361e82889e76c0dc7df0e1e870.
+
+Um diretório por caso (os casos com variantes têm subdiretórios 00, 01…), só com os arquivos
+que os testes usam: in.yaml (entrada), in.json (valor esperado), error (o caso deve ser
+recusado), === (nome do caso) e test.event (eventos do parser, usados para separar os casos
+dentro e fora do subconjunto aceito pelo km-conf). As pastas name/ e tags/ da release (só
+atalhos para os mesmos casos) não foram copiadas.

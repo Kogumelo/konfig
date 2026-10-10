@@ -35,6 +35,12 @@ struct TextoView: View {
                     Text("Linha \(e.linha), coluna \(e.coluna): \(e.mensagem)")
                         .foregroundStyle(.red)
                         .textSelection(.enabled)
+                } else if let e = modelo.avisoRascunho {
+                    // YAML com âncoras, etiquetas, vários documentos…: vale, mas só como texto
+                    Image(systemName: "info.circle.fill").foregroundStyle(.orange)
+                    Text("Linha \(e.linha): \(e.mensagem). Ao salvar, o texto é gravado como está, sem a conferência do formulário.")
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
                 } else if modelo.rascunhoDifere {
                     Image(systemName: "checkmark.circle").foregroundStyle(.green)
                     Text("\(modelo.formatoRascunho) válido — ainda não aplicado")
@@ -124,10 +130,12 @@ struct EditorTexto: NSViewRepresentable {
             ts.setAttributes([.font: Coordenador.fonte, .foregroundColor: NSColor.textColor], range: tudo)
             if pai.formato.ehJSON { colorirJSON(s, ts, json5: pai.formato == .json5) }
             var numero = 0
+            var blocoYAML: Int? = nil
             s.enumerateSubstrings(in: tudo, options: [.byLines, .substringNotRequired]) { _, r, _, _ in
                 numero += 1
                 // .env usa as mesmas cores por linha: `#` comentário, chave antes do `=`, textos entre aspas
                 if self.pai.formato == .ini { self.colorirLinhaINI(s, r, ts) }
+                else if self.pai.formato == .yaml { self.colorirLinhaYAML(s, r, ts, &blocoYAML) }
                 else if !self.pai.formato.ehJSON { self.colorirLinha(s, r, ts) }
                 if numero == self.linhaErro {
                     ts.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.15), range: r)
@@ -239,6 +247,93 @@ struct EditorTexto: NSViewRepresentable {
             while j < u.count {
                 if comentario(u[j]), espaco(u[j - 1]) { pinta(j, u.count, .secondaryLabelColor); return }
                 j += 1
+            }
+        }
+
+        /// YAML: comentário `#` (no começo ou depois de espaço, fora de aspas) em cinza, chave antes
+        /// de `: ` em azul, textos entre aspas e o conteúdo de blocos `|`/`>` em vermelho, `---` e
+        /// `...` em laranja. `bloco` guarda o recuo da linha que abriu um bloco `|`/`>`: as linhas
+        /// seguintes com recuo maior são texto, não chaves nem comentários.
+        private func colorirLinhaYAML(_ s: NSString, _ r: NSRange, _ ts: NSTextStorage, _ bloco: inout Int?) {
+            let u = Array((s.substring(with: r)).utf16)
+            func pinta(_ a: Int, _ b: Int, _ c: NSColor, negrito: Bool = false) {
+                guard b > a else { return }
+                let faixa = NSRange(location: r.location + a, length: b - a)
+                ts.addAttribute(.foregroundColor, value: c, range: faixa)
+                if negrito {
+                    ts.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 12.5, weight: .semibold), range: faixa)
+                }
+            }
+            func espaco(_ c: UInt16) -> Bool { c == 32 || c == 9 }
+            var i = 0
+            while i < u.count, u[i] == 32 { i += 1 }
+            let recuo = i
+            while i < u.count, espaco(u[i]) { i += 1 }
+            if let b = bloco {
+                if i == u.count { return }                                      // linha em branco dentro do bloco
+                if recuo > b { pinta(i, u.count, .systemRed); return }
+                bloco = nil
+            }
+            guard i < u.count else { return }
+            if u[i] == 35 { pinta(i, u.count, .secondaryLabelColor); return }   // #
+            if recuo == 0, u.count >= 3, (u[0] == 45 && u[1] == 45 && u[2] == 45) || (u[0] == 46 && u[1] == 46 && u[2] == 46),
+               u.count == 3 || espaco(u[3]) {
+                pinta(0, 3, .systemOrange, negrito: true)
+                i = 3
+            }
+            // `- ` de listas
+            while i + 1 < u.count, u[i] == 45, espaco(u[i + 1]) {
+                i += 2
+                while i < u.count, espaco(u[i]) { i += 1 }
+            }
+            var k = i
+            var aspa: UInt16 = 0
+            var chaveFeita = false
+            var inicioValor = i
+            while k < u.count {
+                let c = u[k]
+                if aspa != 0 {
+                    if aspa == 34 && c == 92 { k += 2; continue }                // \ escape
+                    if c == aspa {
+                        if aspa == 39 && k + 1 < u.count && u[k + 1] == 39 { k += 2; continue }
+                        aspa = 0
+                    }
+                    k += 1
+                    continue
+                }
+                if (c == 34 || c == 39) && (k == inicioValor || espaco(u[k - 1]) || u[k - 1] == 91 || u[k - 1] == 123 || u[k - 1] == 44) {
+                    var f = k + 1
+                    while f < u.count {
+                        if c == 34 && u[f] == 92 { f += 2; continue }
+                        if u[f] == c {
+                            if c == 39 && f + 1 < u.count && u[f + 1] == 39 { f += 2; continue }
+                            break
+                        }
+                        f += 1
+                    }
+                    f = min(f + 1, u.count)
+                    var j = f
+                    while j < u.count, espaco(u[j]) { j += 1 }
+                    let ehChave = !chaveFeita && j < u.count && u[j] == 58
+                    pinta(k, f, ehChave ? .systemBlue : .systemRed)
+                    if f >= u.count, !ehChave, c != 0 { aspa = 0 }
+                    k = f
+                    continue
+                }
+                if c == 35, k > 0, espaco(u[k - 1]) { pinta(k, u.count, .secondaryLabelColor); break }   // # comentário
+                if c == 58, !chaveFeita, k + 1 >= u.count || espaco(u[k + 1]) {                      // chave:
+                    pinta(i, k, .systemBlue)
+                    chaveFeita = true
+                    inicioValor = k + 1
+                    while inicioValor < u.count, espaco(u[inicioValor]) { inicioValor += 1 }
+                }
+                if (c == 124 || c == 62) && k == inicioValor {                                      // | >
+                    var j = k + 1
+                    while j < u.count, u[j] == 43 || u[j] == 45 || (u[j] >= 49 && u[j] <= 57) { j += 1 }
+                    while j < u.count, espaco(u[j]) { j += 1 }
+                    if j == u.count || u[j] == 35 { bloco = recuo }
+                }
+                k += 1
             }
         }
 

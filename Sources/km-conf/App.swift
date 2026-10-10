@@ -30,6 +30,7 @@ final class ControladorDocumentos: NSDocumentController {
         case .json5?: return "br.com.kogut.km-conf.json5"
         case .env?: return "br.com.kogut.km-conf.env"
         case .ini?: return "br.com.kogut.km-conf.ini"
+        case .yaml?: return "public.yaml"
         case nil: return try super.typeForContents(of: url)
         }
     }
@@ -46,7 +47,7 @@ extension Formato {
     /// Formato pelo tipo de documento do `Info.plist` (último recurso, sem nome de arquivo).
     init(tipo: String) {
         let t = tipo.lowercased()
-        if t.contains("json5") { self = .json5 } else if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else if t.hasSuffix(".ini") { self = .ini } else { self = .toml }
+        if t.contains("json5") { self = .json5 } else if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else if t.hasSuffix(".ini") { self = .ini } else if t.contains("yaml") { self = .yaml } else { self = .toml }
     }
 }
 

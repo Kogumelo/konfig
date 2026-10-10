@@ -423,9 +423,16 @@ public struct ErroLeitura: Error, Sendable, CustomStringConvertible, LocalizedEr
     /// Deslocamento em bytes no texto.
     public var deslocamento: Int
     public var formato: Formato = .toml
+    /// O arquivo usa algo que o leitor reconhece, mas não interpreta (em YAML: âncoras,
+    /// etiquetas, vários documentos…). Não é erro de sintaxe: o arquivo pode ser editado
+    /// como texto, só não pelo formulário.
+    public var foraDoSubconjunto = false
 
     public var description: String { "linha \(linha), coluna \(coluna): \(mensagem)" }
-    public var errorDescription: String? { "\(formato.nome) inválido na \(description)" }
+    public var errorDescription: String? {
+        foraDoSubconjunto ? "\(formato.nome) fora do subconjunto aceito pelo formulário, na \(description)"
+                          : "\(formato.nome) inválido na \(description)"
+    }
 }
 
 /// Nome antigo, de quando só havia TOML.

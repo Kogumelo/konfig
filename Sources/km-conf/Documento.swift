@@ -35,6 +35,9 @@ final class ModeloJanela {
     // modo Texto
     var rascunho = "" { didSet { validarRascunho() } }
     private(set) var erroRascunho: ErroLeitura?
+    /// O rascunho é válido, mas usa algo fora do subconjunto do formulário (YAML com âncoras…):
+    /// pode ser aplicado e gravado, só que como texto.
+    private(set) var avisoRascunho: ErroLeitura?
     /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC", ".env", "INI").
     private(set) var formatoRascunho = "TOML"
     private(set) var rascunhoDifere = false
@@ -144,9 +147,14 @@ final class ModeloJanela {
         let bytes = Array(rascunho.utf8)
         let atual = (try? edicao.resultado()) ?? edicao.base
         rascunhoDifere = bytes != atual
+        avisoRascunho = nil
         do {
             formatoRascunho = try formato.ler(bytes).nomeFormato
             erroRascunho = nil
+        } catch where error.foraDoSubconjunto {
+            formatoRascunho = formato.nome
+            erroRascunho = nil
+            avisoRascunho = error
         } catch {
             erroRascunho = error
         }
@@ -253,12 +261,12 @@ final class Documento: NSDocument {
         }
     }
 
-    /// Arquivos `.env` e `.editorconfig` mantêm o nome: sem isto o ⌘S gravaria `.env` como `.env.env`,
+    /// Arquivos `.env`, `.editorconfig` e `.yaml`/`.yml` mantêm o nome: sem isto o ⌘S gravaria `.env` como `.env.env`,
     /// `.env.local` como `.env.local.env` e `.editorconfig` como `.editorconfig.ini`
     /// (o `NSDocument` acrescenta a extensão do tipo).
     override func fileNameExtension(forType typeName: String, saveOperation: NSDocument.SaveOperationType) -> String? {
         let f = Formato(tipo: typeName)
-        if f == .env || f == .ini, let url = fileURL, Formato(nomeArquivo: url.lastPathComponent) == f {
+        if f == .env || f == .ini || f == .yaml, let url = fileURL, Formato(nomeArquivo: url.lastPathComponent) == f {
             return url.pathExtension.isEmpty ? nil : url.pathExtension
         }
         return super.fileNameExtension(forType: typeName, saveOperation: saveOperation)

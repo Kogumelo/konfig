@@ -5,7 +5,7 @@ import ConfCore
 ///
 /// O arquivo é uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
 /// `exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5` ou
-/// `exemplos/.env` ou `exemplos/config.ini`, com o mesmo nome, ou de `config.jsonc` com nome `algo.json` (o
+/// `exemplos/.env`, `exemplos/config.ini` ou `exemplos/config.yaml`, com o mesmo nome, ou de `config.jsonc` com nome `algo.json` (o
 /// roteiro de cada formato conta com os campos desses exemplos; o `.env` é
 /// reconhecido pelo nome).
 ///
@@ -50,8 +50,10 @@ enum Autoteste {
         var textoValido: (String) -> String
         var caminhoNovo: Caminho
         var externo: (de: String, para: String)
-        /// Lista `chave[]` (INI): acrescentar um item deve acrescentar só uma linha.
+        /// Lista `chave[]` (INI) ou lista em bloco (YAML): acrescentar um item deve acrescentar só uma linha.
         var lista: (campo: String, item: Valor)? = nil
+        /// Texto válido, mas fora do subconjunto do formulário (YAML com âncora): aviso, não erro.
+        var textoForaDoSubconjunto: ((String) -> String)? = nil
     }
 
     static func roteiro(_ arquivo: URL) -> Roteiro {
@@ -120,6 +122,22 @@ enum Autoteste {
                            caminhoNovo: [.chave("novo"), .chave("x")],
                            externo: ("pool = 12", "pool = 30"),
                            lista: ("php.\"extensoes[]\"", .texto("zip")))
+        case .yaml?:
+            // exemplos/config.yaml, no estilo de um docker-compose
+            return Roteiro(nomeFormato: "YAML",
+                           secao: "services.web",
+                           escolha: ("services.web.restart", ["no", "always", "on-failure", "unless-stopped"]),
+                           alteracoes: [
+                               ("pool", .inteiro(20)),
+                               ("nivel_log", .texto("aviso")),
+                               ("services.web.image", .texto("nginx:1.28-alpine")),
+                           ],
+                           textoInvalido: { $0 + "\nquebrado: [sem fim\n" },
+                           textoValido: { $0 + "\nnovo: 1\n" },
+                           caminhoNovo: [.chave("novo")],
+                           externo: ("pool: 12", "pool: 30"),
+                           lista: ("services.web.ports", .texto("9000:9000")),
+                           textoForaDoSubconjunto: { $0 + "\nbase: &b {a: 1}\ncopia: *b\n" })
         default:
             return Roteiro(nomeFormato: "TOML",
                            textoInvalido: { $0 + "\n[novo]\nx = \n" },
@@ -252,6 +270,12 @@ enum Autoteste {
             registra(m.erroRascunho != nil, "texto inválido mostra erro: \(m.erroRascunho?.description ?? "-")")
             foto(janela, saida.appendingPathComponent("3-texto-erro.png"))
             registra(!m.aplicarRascunho(), "texto inválido não é aplicado")
+            if let f = r.textoForaDoSubconjunto {
+                m.rascunho = f(String(decoding: original, as: UTF8.self))
+                registra(m.erroRascunho == nil && m.avisoRascunho?.foraDoSubconjunto == true,
+                         "texto fora do subconjunto: aviso, não erro (\(m.avisoRascunho?.description ?? "-"))")
+                foto(janela, saida.appendingPathComponent("3b-texto-fora-do-subconjunto.png"))
+            }
             m.rascunho = r.textoValido(String(decoding: original, as: UTF8.self))
             registra(m.erroRascunho == nil && m.formatoRascunho == r.nomeFormato, "texto válido reconhecido como \(m.formatoRascunho)")
             var aplicou = false

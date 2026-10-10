@@ -1,0 +1,54 @@
+# Exemplo do km-conf no estilo de um docker-compose.yml.
+# Os comentários acima de uma chave (ou no fim da linha) viram a ajuda do campo.
+---
+name: painel-kogumelo
+
+# Nível de detalhe do log
+# debug | info | aviso | erro
+nivel_log: info
+
+services:
+  # Servidor web na frente do painel
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped  # no | always | on-failure | unless-stopped
+    # portas "host:contêiner" entre aspas: sem elas, um leitor YAML 1.1 leria 8080:80 como número
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      TZ: America/Sao_Paulo
+      # código do país: "no" (Noruega) entre aspas, senão um leitor YAML 1.1 entende "não" (falso)
+      PAIS: "no"
+      DEBUG: false
+    command: ["nginx", "-g", "daemon off;"]
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost]
+      interval: 30s
+      retries: 3
+
+  banco:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: painel
+      POSTGRES_PASSWORD_FILE: /run/secrets/senha
+    volumes:
+      - dados:/var/lib/postgresql/data
+
+# Mensagem da página de manutenção
+manutencao: |
+  O painel está em manutenção.
+  Volte em alguns minutos.
+
+# Tarefas agendadas
+tarefas:
+  - nome: backup
+    cron: "0 3 * * *"
+    ativa: true
+  - nome: limpeza
+    cron: "30 4 * * 0"
+    ativa: false
+
+# conexões simultâneas com o banco
+pool: 12
+limite_mb: 512.5

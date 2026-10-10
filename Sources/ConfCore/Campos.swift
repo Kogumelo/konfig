@@ -92,7 +92,8 @@ public struct Secao: Identifiable, Sendable {
 public enum Campos {
     /// Monta as seções na ordem do arquivo.
     public static func secoes(_ doc: DocumentoConf) -> [Secao] {
-        let json = doc.formato.ehJSON
+        // YAML se organiza como JSON: mapas viram seções e listas de mapas, grupos
+        let json = doc.formato.ehJSON || doc.formato == .yaml
         var porSecao: [Int: [Campo]] = [:]
         var raiz: [Campo] = []
         for e in doc.entradas {
@@ -106,6 +107,9 @@ public enum Campos {
             var titulo = "Raiz"
             if doc.formato == .env { titulo = "Variáveis"; sub = "CHAVE=valor (todos os valores são texto)" }
             if doc.formato == .ini { titulo = "Geral"; sub = "chaves antes da primeira seção" }
+            if doc.formato == .yaml {
+                if case .tabela = doc.valorRaiz { sub = "chaves do mapa principal" } else { sub = "valor principal do arquivo" }
+            }
             r.append(Secao(id: "raiz", titulo: titulo, subtitulo: sub, caminho: [], campos: raiz))
         }
         // total de itens por lista de tabelas (mesmo caminho sem o índice final)
@@ -122,6 +126,11 @@ public enum Campos {
                 let chave: String
                 switch lista.last { case .chave(let k)?: chave = Formatar.textoBasico(k) + ": "; default: chave = "" }
                 subtitulo = c.ehListaDeTabelas ? chave + "[ { … } ]" : chave + "{ … }"
+                if doc.formato == .yaml {
+                    let k: String
+                    switch lista.last { case .chave(let x)?: k = x + ":"; default: k = "" }
+                    subtitulo = c.ehListaDeTabelas ? (k.isEmpty ? "- …" : k + " - …") : k + " …"
+                }
             }
             if doc.formato == .ini {
                 // o nome como está entre os colchetes (pontos e espaços são literais)

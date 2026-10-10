@@ -438,7 +438,8 @@ func jsonMudarCadaValor(_ caso: String) throws {
     #expect(Formato(extensao: "json") == .json)
     #expect(Formato(extensao: "JSONC") == .json)
     #expect(Formato(extensao: "toml") == .toml)
-    #expect(Formato(extensao: "yaml") == nil)
+    #expect(Formato(extensao: "yaml") == .yaml)
+    #expect(Formato(extensao: "xml") == nil)
 }
 
 // MARK: - exemplos/config.jsonc
