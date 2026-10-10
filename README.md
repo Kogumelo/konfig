@@ -2,8 +2,8 @@
 
 Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
 (JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`),
-**JSON5** (chaves sem aspas, aspas simples, hexadecimal, `Infinity`…) e **.env**
-(variáveis de ambiente `CHAVE=valor`).
+**JSON5** (chaves sem aspas, aspas simples, hexadecimal, `Infinity`…), **.env**
+(variáveis de ambiente `CHAVE=valor`) e **INI** (`php.ini`, `.editorconfig`, `desktop.ini`…).
 Abre o arquivo pelo Finder (duplo clique ou "Abrir com"), mostra cada valor num
 campo do tipo certo e, ao salvar, troca no arquivo **só os trechos dos valores
 alterados**: comentários, ordem, espaços, aspas, escapes, forma dos números, CRLF
@@ -18,10 +18,13 @@ passa na suíte oficial [json5-tests](https://github.com/json5/json5-tests) (os 
 casos válidos aceitos e os 31 inválidos recusados, nenhum deixado de fora). O JSONC
 não tem suíte oficial: há arquivos próprios em `Tests/ConfCoreTests/Fixtures/jsonc/`.
 O de `.env` segue as regras do `dotenv` (Node/Ruby), escritas em [Regras do .env](#regras-do-env).
+O INI não tem norma: o km-conf aceita um dialeto fixo, descrito em [Dialeto INI](#dialeto-ini) e
+testado com arquivos próprios, com `.editorconfig` do projeto EditorConfig e com um trecho do
+`php.ini-production` do PHP (`Tests/ConfCoreTests/Fixtures/ini/`).
 
 Parte do ecossistema de utilitários `km-*` (ver também `km-clip`). Chamava-se
 `km-toml`; o nome mudou porque o plano é editar vários formatos. Hoje: TOML, JSON,
-JSONC, JSON5 e .env. Planejados: INI e YAML (ver [Próximos formatos](#próximos-formatos)).
+JSONC, JSON5, .env e INI. Planejado: YAML (ver [Próximos formatos](#próximos-formatos)).
 
 ## Compilar
 
@@ -56,11 +59,13 @@ open -a "$PWD/km-conf.app" exemplos/config.jsonc
 open -a "$PWD/km-conf.app" exemplos/settings.jsonc
 open -a "$PWD/km-conf.app" exemplos/config.json5
 open -a "$PWD/km-conf.app" exemplos/.env
+open -a "$PWD/km-conf.app" exemplos/config.ini
 # ou
 open km-conf.app --args exemplos/config.toml
 ```
 
-O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc` ou `.json5`; e `.env`
+O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc`, `.json5` ou `.ini`
+(também o arquivo chamado `.editorconfig`, que é INI); e `.env`
 para o arquivo chamado exatamente `.env`, para `.env.qualquer-coisa` (`.env.local`,
 `.env.production`) e para `qualquer-coisa.env` (`producao.env`). O nome conta mais
 que o tipo que o macOS dá ao arquivo: para `.env` o sistema devolve extensão vazia e
@@ -114,8 +119,10 @@ Aberto sem arquivo, o app mostra o painel de abrir.
   depois da vírgula) — inclusive a dica de escolha `a | b | c`.
 - **Texto** (⌘2): o arquivo inteiro editável, com cores simples (em JSON, JSONC e
   JSON5: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza; em
-  JSON5 também as chaves sem aspas e os textos com aspas simples). O texto só é
-  aplicado ao documento se for válido no formato do arquivo (TOML, JSON/JSONC, JSON5 ou .env);
+  JSON5 também as chaves sem aspas e os textos com aspas simples; em INI: `[seções]`
+  em laranja, chaves em azul, comentários `;` e `#` em cinza, valores entre aspas em
+  vermelho, com as mesmas regras de comentário do leitor). O texto só é
+  aplicado ao documento se for válido no formato do arquivo (TOML, JSON/JSONC, JSON5, .env ou INI);
   enquanto não for, o erro aparece com
   linha e coluna e a linha fica marcada. Vale ao voltar para o Formulário (⌘1),
   ao clicar em Aplicar (⌘↩) ou ao salvar. As aspas "inteligentes" do macOS ficam
@@ -142,10 +149,18 @@ O app usa o sistema de documentos do macOS, então:
 ## Abrir com duplo clique
 
 O app declara que edita `.toml` (tipo `public.toml`), `.json` (`public.json`),
-`.jsonc`, `.json5` e `.env` (o macOS não declara estes três; o app declara
-`br.com.kogut.km-conf.jsonc`, `br.com.kogut.km-conf.json5` e
-`br.com.kogut.km-conf.env`, derivados de `public.plain-text`), sempre com papel
-Editor e `LSHandlerRank` Alternate: **não** se registra como padrão.
+`.jsonc`, `.json5`, `.env` e `.ini` (o macOS não declara estes quatro; o app declara
+`br.com.kogut.km-conf.jsonc`, `br.com.kogut.km-conf.json5`,
+`br.com.kogut.km-conf.env` e `br.com.kogut.km-conf.ini`, derivados de
+`public.plain-text`), sempre com papel Editor e `LSHandlerRank` Alternate: **não**
+se registra como padrão.
+
+Para `.ini` há um detalhe: o **Xcode** importa o tipo `com.microsoft.ini` (derivado de
+`public.text`) e, numa máquina com Xcode, é esse o tipo que o sistema dá aos arquivos
+`.ini` (conferido no macOS 26 com `lsregister -dump`). Por isso o km-conf declara que
+edita os dois, `br.com.kogut.km-conf.ini` e `com.microsoft.ini`: com ou sem Xcode, ele
+aparece em "Abrir com". O `.editorconfig` não tem extensão para o sistema; como o
+`.env`, é reconhecido pelo nome dentro do app (`open -a`, ⌘O ou arrastar para o ícone).
 
 Por que `public.plain-text` e não `public.json` como tipo-pai do `.jsonc` e do
 `.json5`: num teste no macOS 26.7 com dois apps de mentira declarando extensões
@@ -290,15 +305,118 @@ Ao gravar, o tipo de aspas se mantém:
 - aspas duplas continuam duplas: o começo e o fim que não mudaram são copiados
   byte a byte, e o trecho novo escapa só `\`, `"`, quebra de linha e CR.
 
+### INI
+
+- Todo valor é texto; cada `[seção]` é um item da barra lateral e as chaves antes da
+  primeira seção ficam em "Geral". Um comentário `a | b | c` vira escolha.
+- Listas `chave[] = …` (estilo PHP) aparecem como etiquetas. Acrescentar um item
+  acrescenta **uma linha**, logo depois da última da lista, copiando o começo dela
+  (recuo, chave, separador e espaços); tirar um item tira **a linha dele** (o
+  comentário que estava acima dela fica). Uma lista não pode ficar vazia pelo
+  formulário: para apagá-la, use o modo Texto.
+- Se outra chave estiver no meio dos itens de uma lista e as duas forem alteradas,
+  as alterações são aplicadas uma de cada vez (o trecho da lista vai do primeiro
+  ao último item e contém a outra chave); o resultado é o mesmo.
+- Não há escapes: um valor com quebra de linha não pode ser gravado, nem um que
+  precise de aspas e tenha aspas duplas **e** simples.
+- O arquivo precisa estar em UTF-8 (com ou sem BOM). `desktop.ini` gravado pelo
+  Windows costuma estar em UTF-16 ou na página de código do sistema: é recusado.
+- Criar chaves e seções: pelo modo Texto.
+
+### Dialeto INI
+
+INI não tem norma: o Windows (`GetPrivateProfileString`), o PHP (`parse_ini_file`),
+o Python (`configparser`) e o Git (`git config`) seguem regras diferentes. O km-conf
+aceita exatamente estas, escolhidas para abrir sem surpresa os arquivos mais comuns
+(`php.ini`, `.editorconfig`, `desktop.ini`, arquivos de jogos e programas Windows) e
+para nunca adivinhar: o que é ambíguo é recusado, com linha e coluna, em vez de ser
+lido de um jeito que o programa dono do arquivo talvez não leia.
+
+- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar). CR
+  sozinho é erro.
+- **Linhas em branco** são preservadas e separam o comentário da chave seguinte.
+- **Comentário de linha**: `;` ou `#` no começo da linha (espaços antes são
+  permitidos). Os comentários logo acima de uma chave (sem linha em branco no meio)
+  viram a ajuda do campo, sem as marcas repetidas (`;; texto` → `texto`).
+- **Seção**: `[nome]`. Espaços dentro dos colchetes fazem parte do nome, tirando os
+  das pontas (`[ CLI Server ]` → `CLI Server`). Pontos são literais: `[a.b]` é a
+  seção `a.b`, não uma subseção de `a`. O nome vai até o primeiro `]` depois do qual
+  só há espaços e, opcionalmente, um comentário; assim `[*.[ch]]` (EditorConfig) é a
+  seção `*.[ch]` e `[a] ; nota` é a seção `a` com o comentário `nota`. Seção sem nome
+  (`[]`) é erro. Uma seção que aparece de novo continua a primeira (as chaves se
+  juntam; repetir uma chave entre as duas partes é erro).
+- **Chaves antes da primeira seção** ficam na seção "Geral".
+- **Par**: `chave = valor` ou `chave: valor`; vale o primeiro `=` ou `:` da linha
+  (`url = http://x` tem a chave `url`). O separador e os espaços em volta dele
+  nunca são reescritos. A chave é o texto antes do separador, sem os espaços das pontas.
+- **Valor sem aspas**: os espaços das pontas não fazem parte dele (e ficam no
+  arquivo). Termina num comentário: `;` ou `#` **depois de um espaço ou tabulação**
+  (`a = x ; nota`). Colados, fazem parte do valor: `url = http://x/#a` e `a = b;c`.
+  Dois casos no começo do valor: `;` é comentário (`a = ; nota` é valor vazio, como
+  no PHP) e `#` é valor (`cor = #DD0000`, ver abaixo).
+- **Valor entre aspas** duplas ou simples, **sem escapes** (`\` é uma barra); a aspa
+  fecha na mesma linha, e depois dela só podem vir espaços e um comentário.
+  `"  com espaços ; e # dentro  "` guarda tudo isso.
+- **Todo valor é texto**: não há como saber se `On`, `yes` ou `1` é sim/não (o PHP
+  diz que sim, o Python depende de quem lê, o EditorConfig só aceita `true`).
+- **Listas no estilo PHP**: várias linhas `chave[] = valor` na mesma seção formam uma
+  lista (`ext [] =` é a mesma lista). As chaves `extension` e `zend_extension`
+  repetidas também formam lista (ver abaixo).
+- **Chave repetida sem `[]` na mesma seção é recusada**, com linha e coluna: editar
+  uma delas seria editar talvez a que o programa ignora. `x` e `x[]` na mesma seção
+  também colidem.
+- **Linha que não é seção, par nem comentário é recusada**, com linha e coluna.
+
+Ao gravar, o tipo de aspas do valor se mantém: sem aspas continua sem aspas se o
+texto couber (não vazio nas pontas, sem `;`, sem `#` no começo ou depois de espaço,
+sem começar com aspas); se não couber, aspas duplas (ou simples, se o texto tiver
+`"`). Aspas duplas continuam duplas e simples continuam simples, a menos que o texto
+tenha essa aspa. Um valor vazio em `chave =` recebe um espaço depois do `=` (`chave = novo`).
+
+**Ajustes feitos ao testar com arquivos reais** (a regra pedida no começo foi
+mudada nestes pontos):
+
+- `#` **no começo do valor é valor**, não comentário. O `php.ini-production` e o
+  `php.ini-development` oficiais trazem `;highlight.string  = #DD0000` (e mais quatro
+  cores): descomentada, a linha precisa dar a cor `#DD0000`, que é o que o PHP lê (o
+  PHP não usa `#` como comentário desde a versão 7). Com a regra "`#` depois de
+  espaço é comentário", o valor seria vazio. Ao gravar, um texto que começa com `#`
+  vai entre aspas, para não depender disso.
+- `;` no começo do valor continua comentário (`chave = ; nota`), como no PHP e no Windows.
+- `extension` e `zend_extension` **repetidas são lista**, não erro. É o jeito
+  documentado de carregar extensões no `php.ini` (`;extension=curl`,
+  `;extension=gd`… descomentadas, uma por linha); recusar a repetição faria quase todo
+  `php.ini` de uso real (Windows, XAMPP) não abrir. Para qualquer outra chave a
+  repetição continua recusada.
+- O nome da seção vai até o **primeiro `]` seguido só de espaços ou comentário**, e
+  não até o primeiro `]`: o `.editorconfig` usa globs com colchetes, como `[*.[ch]]`.
+- O valor gravado sem aspas também não pode ter `;` em lugar nenhum (nem colado), porque
+  o PHP corta o valor no `;`: `a = b;c` é lido pelo km-conf como `b;c`, mas um valor
+  novo `b;c` é gravado como `"b;c"`, que os dois leem igual.
+
+**Fora do dialeto** (e como aparecem se o arquivo os tiver):
+
+- **Continuação de valor em várias linhas** (`configparser` do Python: linha
+  seguinte recuada): a linha de continuação não tem `=` nem `:`, então o arquivo é
+  recusado com erro nessa linha. Se a continuação tiver `=` ou `:`, ela vira uma
+  chave à parte (`  b = 2` recuado é a chave `b`).
+- **Interpolação** `%(x)s` (Python) e `${x}` (PHP, Python `ExtendedInterpolation`):
+  fica como texto, sem expandir (`%(home)s/bin` é exatamente esse texto).
+- **Subseções do Git** (`[remote "origin"]`): o nome da seção é o texto inteiro,
+  `remote "origin"`, com as aspas; dá para editar as chaves, mas o km-conf não sabe
+  que é a subseção `origin` de `remote`. Chaves repetidas do Git (`fetch` várias
+  vezes) são recusadas, e o `.gitconfig` não é associado ao km-conf.
+- **Chave sem valor** (`skip-networking` do `my.cnf`, `allow_no_value` do Python):
+  recusada como linha que não é par.
+- **Escapes** em aspas duplas (`\"`, `\n`, `${VAR}` do PHP dentro de aspas): ficam
+  como estão no texto (o PHP expande alguns; o km-conf mostra o texto cru).
+
 ### Próximos formatos
 
 A parte própria de cada formato fica em `Formato.swift` (qual leitor, qual escritor
 e o que o formato não aceita) e em um par `LeitorX.swift`/`FormatarX.swift`; `Gravar`,
 `Edicao`, `Campos` e a interface já são comuns. Para acrescentar um formato:
 
-- **INI**: falta escolher um dialeto (não há norma: `;` ou `#`, `:` ou `=`, seções
-  aninhadas com ponto, aspas, continuação de linha, chaves repetidas) e escrever o
-  leitor. O resto (seções `[x]` → `Cabecalho`, valores texto) já existe.
 - **YAML**: leitor grande (estilos de bloco e de fluxo, âncoras, tags, textos `|` e
   `>`, vários documentos); a gravação de listas que mudam de tamanho precisaria de
   um escritor de bloco próprio, porque `Formatar.lista` só sabe listas `[ … ]`.
@@ -313,7 +431,7 @@ Os nomes antigos continuam valendo como apelidos:
 | `EdicaoTOML(bytes)` | `Edicao(bytes, formato:)` (`.toml` por padrão) |
 | `ErroTOML` | `ErroLeitura` (com `formato`; a mensagem diz "TOML inválido" ou "JSON inválido") |
 
-Também: `Formato` (`.toml`, `.json`, `.json5`, `.env`; `ehJSON` para os dois JSON)
+Também: `Formato` (`.toml`, `.json`, `.json5`, `.env`, `.ini`; `ehJSON` para os dois JSON)
 despacha ler, ler um valor e escrever (`LeitorJSON.lerJSON5` para JSON5),
 e `Formato(nomeArquivo:)` escolhe pelo nome;
 `Gravar.aplicar(bytes, alteracoes:, formato:)`; `Valor.nulo`; `TipoCampo.cru.nome`
@@ -324,26 +442,31 @@ e `Formato(nomeArquivo:)` escolhe pelo nome;
 ```
 Package.swift
 Sources/ConfCore/      leitores, modelo e gravação (sem interface)
-  Formato.swift        TOML, JSON ou .env: qual leitor e qual escritor usar
+  Formato.swift        TOML, JSON, .env ou INI: qual leitor e qual escritor usar
   Leitor.swift         TOML 1.0 → estrutura, com intervalo de bytes de cada valor
   LeitorJSON.swift     JSON/JSONC/JSON5 → estrutura, com intervalos e comentários
   Gravar.swift         troca só os trechos alterados, no estilo original (TOML)
   FormatarJSON.swift   escreve valores JSON/JSON5 no estilo do original
   LeitorEnv.swift      .env → estrutura, com intervalos e comentários
   FormatarEnv.swift    escreve valores .env mantendo o tipo de aspas
+  LeitorINI.swift      INI → estrutura (seções, listas `chave[]`), com intervalos e comentários
+  FormatarINI.swift    escreve valores INI mantendo as aspas; acrescenta/tira linhas de listas
   Campos.swift         estrutura → seções e campos da tela
   Edicao.swift         estado de um arquivo aberto; diferença por linhas
   Modelo.swift         tipos (Valor, DataHora, Entrada, DocumentoConf, …)
 Sources/km-conf/       o app (NSDocument + SwiftUI)
 Tests/ConfCoreTests/   suítes toml-test, JSONTestSuite e json5-tests (Fixtures/,
                        licença MIT), tsconfig.json de exemplo, arquivos JSONC
-                       (Fixtures/jsonc/) e .env (Fixtures/env/) e testes de gravação
+                       (Fixtures/jsonc/), .env (Fixtures/env/), INI (Fixtures/ini/:
+                       próprios, .editorconfig do EditorConfig e trecho do php.ini,
+                       licenças MIT e BSD ao lado) e testes de gravação
 exemplos/config.toml
 exemplos/config.json
 exemplos/config.jsonc
 exemplos/settings.jsonc
 exemplos/config.json5
 exemplos/.env
+exemplos/config.ini    (com CRLF)
 ```
 
 ### Diagnóstico sem teclado
@@ -355,13 +478,16 @@ KM_CONF_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-jsonc" km-conf.app/Contents/
 KM_CONF_AUTOTESTE="/tmp/x/settings.jsonc|/tmp/x/saida-settings" km-conf.app/Contents/MacOS/km-conf
 KM_CONF_AUTOTESTE="/tmp/x/config.json5|/tmp/x/saida-json5" km-conf.app/Contents/MacOS/km-conf
 KM_CONF_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" km-conf.app/Contents/MacOS/km-conf
+KM_CONF_AUTOTESTE="/tmp/x/config.ini|/tmp/x/saida-ini" km-conf.app/Contents/MacOS/km-conf
 ```
 
 O arquivo precisa ser uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
-`exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5` ou
-`exemplos/.env` (o roteiro conta com os campos deles; a cópia do `.env` pode se
+`exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5`,
+`exemplos/.env` ou `exemplos/config.ini` (o roteiro conta com os campos deles; a cópia do `.env` pode se
 chamar `.env`, `.env.local` ou `algo.env`; uma cópia do `config.jsonc` com nome
 `algo.json` testa o aviso "JSON com comentários"). Abre a **cópia** (ele é alterado e depois restaurado), altera três
 valores pelo mesmo caminho dos controles, salva, desfaz, testa o modo Texto e a
 recarga por mudança externa, e grava `relatorio.txt` e fotos da janela na pasta
-de saída.
+de saída. No INI, também acrescenta um item na lista `extensoes[]` (confere que é uma
+linha nova e nada mais) e desfaz; uma cópia do `config.ini` chamada `.editorconfig`
+confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`).

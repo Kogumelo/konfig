@@ -89,6 +89,22 @@
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Configuração INI</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>br.com.kogut.km-conf.ini</string>
+				<!-- tipo que o Xcode declara para .ini; quando o Xcode está instalado, é o que o sistema usa -->
+				<string>com.microsoft.ini</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>Documento</string>
+		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
@@ -174,6 +190,26 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>env</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<!-- O macOS não declara .ini (a extensão fica com um tipo "dinâmico"). Mesmo
+			     raciocínio do JSONC: derivado de public.plain-text. O ".editorconfig" (sem
+			     extensão para o sistema) é reconhecido pelo nome, no app. -->
+			<key>UTTypeIdentifier</key>
+			<string>br.com.kogut.km-conf.ini</string>
+			<key>UTTypeDescription</key>
+			<string>Configuração INI</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ini</string>
 				</array>
 			</dict>
 		</dict>

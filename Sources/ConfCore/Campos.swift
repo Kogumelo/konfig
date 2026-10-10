@@ -71,7 +71,8 @@ public struct Campo: Identifiable, Sendable {
 }
 
 /// Uma seção da tela: a raiz, uma `[tabela]` ou um item de `[[lista]]`
-/// (em JSON: um objeto aninhado ou um objeto dentro de uma lista; em .env, só a raiz).
+/// (em JSON: um objeto aninhado ou um objeto dentro de uma lista; em .env, só a raiz;
+/// em INI, a seção "Geral" e cada `[seção]`).
 public struct Secao: Identifiable, Sendable {
     /// Estável enquanto a estrutura do arquivo não muda: "raiz" ou o caminho do cabeçalho.
     public var id: String
@@ -104,6 +105,7 @@ public enum Campos {
             if json { if case .tabela = doc.valorRaiz { sub = "chaves do objeto principal" } else { sub = "valor principal do arquivo" } }
             var titulo = "Raiz"
             if doc.formato == .env { titulo = "Variáveis"; sub = "CHAVE=valor (todos os valores são texto)" }
+            if doc.formato == .ini { titulo = "Geral"; sub = "chaves antes da primeira seção" }
             r.append(Secao(id: "raiz", titulo: titulo, subtitulo: sub, caminho: [], campos: raiz))
         }
         // total de itens por lista de tabelas (mesmo caminho sem o índice final)
@@ -120,6 +122,11 @@ public enum Campos {
                 let chave: String
                 switch lista.last { case .chave(let k)?: chave = Formatar.textoBasico(k) + ": "; default: chave = "" }
                 subtitulo = c.ehListaDeTabelas ? chave + "[ { … } ]" : chave + "{ … }"
+            }
+            if doc.formato == .ini {
+                // o nome como está entre os colchetes (pontos e espaços são literais)
+                nome = c.nomes.first ?? ""
+                subtitulo = "[\(nome)]"
             }
             let campos = porSecao[i] ?? []
             var s = Secao(id: c.caminho.texto, titulo: nome, subtitulo: subtitulo, caminho: c.caminho, campos: campos)

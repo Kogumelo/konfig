@@ -127,7 +127,8 @@ struct EditorTexto: NSViewRepresentable {
             s.enumerateSubstrings(in: tudo, options: [.byLines, .substringNotRequired]) { _, r, _, _ in
                 numero += 1
                 // .env usa as mesmas cores por linha: `#` comentário, chave antes do `=`, textos entre aspas
-                if !self.pai.formato.ehJSON { self.colorirLinha(s, r, ts) }
+                if self.pai.formato == .ini { self.colorirLinhaINI(s, r, ts) }
+                else if !self.pai.formato.ehJSON { self.colorirLinha(s, r, ts) }
                 if numero == self.linhaErro {
                     ts.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.15), range: r)
                 }
@@ -182,6 +183,62 @@ struct EditorTexto: NSViewRepresentable {
                 } else {
                     i += 1
                 }
+            }
+        }
+
+        /// INI, com as regras do `LeitorINI`: comentário `;` ou `#` no começo da linha ou depois
+        /// de espaço (fora de aspas), `[seção]`, chave antes do primeiro `=` ou `:`, valor entre aspas.
+        private func colorirLinhaINI(_ s: NSString, _ r: NSRange, _ ts: NSTextStorage) {
+            let u = Array((s.substring(with: r)).utf16)
+            func pinta(_ a: Int, _ b: Int, _ c: NSColor, negrito: Bool = false) {
+                guard b > a else { return }
+                let faixa = NSRange(location: r.location + a, length: b - a)
+                ts.addAttribute(.foregroundColor, value: c, range: faixa)
+                if negrito {
+                    ts.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 12.5, weight: .semibold), range: faixa)
+                }
+            }
+            func espaco(_ c: UInt16) -> Bool { c == 32 || c == 9 }
+            func comentario(_ c: UInt16) -> Bool { c == 59 || c == 35 }                // ; #
+            var i = 0
+            while i < u.count, espaco(u[i]) { i += 1 }
+            guard i < u.count else { return }
+            if comentario(u[i]) { pinta(i, u.count, .secondaryLabelColor); return }
+            if u[i] == 91 {                                                         // [seção] ; comentário
+                var k = i + 1
+                while k < u.count {
+                    if u[k] == 93 {
+                        var j = k + 1
+                        while j < u.count, espaco(u[j]) { j += 1 }
+                        if j == u.count || comentario(u[j]) {
+                            pinta(i, k + 1, .systemOrange, negrito: true)
+                            pinta(j, u.count, .secondaryLabelColor)
+                            return
+                        }
+                    }
+                    k += 1
+                }
+                return
+            }
+            guard let sep = u[i...].firstIndex(where: { $0 == 61 || $0 == 58 }) else { return }   // = :
+            pinta(i, sep, .systemBlue)
+            var v = sep + 1
+            while v < u.count, espaco(u[v]) { v += 1 }
+            guard v < u.count else { return }
+            if u[v] == 34 || u[v] == 39 {                                           // "…" '…'
+                var f = v + 1
+                while f < u.count, u[f] != u[v] { f += 1 }
+                pinta(v, min(f + 1, u.count), .systemRed)
+                var j = f + 1
+                while j < u.count, espaco(u[j]) { j += 1 }
+                if j < u.count, comentario(u[j]) { pinta(j, u.count, .secondaryLabelColor) }
+                return
+            }
+            if u[v] == 59 { pinta(v, u.count, .secondaryLabelColor); return }
+            var j = v + 1
+            while j < u.count {
+                if comentario(u[j]), espaco(u[j - 1]) { pinta(j, u.count, .secondaryLabelColor); return }
+                j += 1
             }
         }
 

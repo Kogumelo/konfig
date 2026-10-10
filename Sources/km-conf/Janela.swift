@@ -176,6 +176,8 @@ struct Formulario: View {
                              ? "Este objeto não tem valores próprios. Para criar chaves, use o modo Texto."
                              : modelo.formato == .env
                              ? "O arquivo não tem variáveis. Para criar, use o modo Texto."
+                             : modelo.formato == .ini
+                             ? "Esta seção não tem chaves. Para criar, use o modo Texto."
                              : "Esta tabela não tem valores próprios. Para criar chaves, use o modo Texto.")
                             .foregroundStyle(.secondary)
                     }
