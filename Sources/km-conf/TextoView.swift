@@ -126,7 +126,8 @@ struct EditorTexto: NSViewRepresentable {
             var numero = 0
             s.enumerateSubstrings(in: tudo, options: [.byLines, .substringNotRequired]) { _, r, _, _ in
                 numero += 1
-                if self.pai.formato == .toml { self.colorirLinha(s, r, ts) }
+                // .env usa as mesmas cores por linha: `#` comentário, chave antes do `=`, textos entre aspas
+                if self.pai.formato != .json { self.colorirLinha(s, r, ts) }
                 if numero == self.linhaErro {
                     ts.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.15), range: r)
                 }

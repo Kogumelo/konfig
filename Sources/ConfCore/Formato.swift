@@ -9,20 +9,45 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
     case toml
     /// JSON (RFC 8259) e JSONC (JSON com comentários `//` e `/* */` e vírgula final).
     case json
+    /// Variáveis de ambiente `CHAVE=valor` (`.env`, `.env.local`, `producao.env`).
+    case env
 
     /// Formato pela extensão do arquivo (sem o ponto, qualquer caixa).
     public init?(extensao: String) {
         switch extensao.lowercased() {
         case "toml": self = .toml
         case "json", "jsonc": self = .json
+        case "env": self = .env
         default: return nil
         }
+    }
+
+    /// Formato pelo nome do arquivo. Primeiro a extensão; depois os nomes de `.env`,
+    /// que muitas vezes não têm extensão que o sistema reconheça: o macOS dá
+    /// `pathExtension` vazio para `.env` e `local` para `.env.local`.
+    public init?(nomeArquivo: String) {
+        let n = nomeArquivo.lowercased()
+        let ext = (n as NSString).pathExtension
+        if n.hasPrefix(".") && !n.dropFirst().contains(".") {
+            // `.env`, `.toml`: o nome inteiro é a "extensão" (`pathExtension` é vazio)
+            if let f = Formato(extensao: String(n.dropFirst())) { self = f; return }
+        }
+        if let f = Formato(extensao: ext), !(n.hasPrefix(".env.") && f != .env) {
+            self = f
+            return
+        }
+        if n == ".env" || n.hasPrefix(".env.") || n.hasSuffix(".env") {
+            self = .env
+            return
+        }
+        return nil
     }
 
     public var nome: String {
         switch self {
         case .toml: return "TOML"
         case .json: return "JSON"
+        case .env: return ".env"
         }
     }
 
@@ -31,6 +56,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return try Leitor.ler(bytes)
         case .json: return try LeitorJSON.ler(bytes)
+        case .env: return try LeitorEnv.ler(bytes)
         }
     }
 
@@ -39,6 +65,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return try Leitor.lerValor(texto)
         case .json: return try LeitorJSON.lerValor(texto)
+        case .env: return try LeitorEnv.lerValor(texto)
         }
     }
 
@@ -48,6 +75,7 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
         switch self {
         case .toml: return Formatar.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
         case .json: return FormatarJSON.valor(v, antigo: antigo, posicao: posicao, fonte: fonte, quebra: quebra)
+        case .env: return FormatarEnv.valor(v, posicao: posicao, fonte: fonte, quebra: quebra)
         }
     }
 
@@ -62,6 +90,9 @@ public enum Formato: String, Sendable, Hashable, CaseIterable {
             case .dataHora: return "JSON não tem tipo de data"
             default: break
             }
+        case .env:
+            if case .texto = v { return nil }
+            return "em .env todo valor é texto"
         }
         switch v {
         case .lista(let l): return l.lazy.compactMap { problema($0) }.first

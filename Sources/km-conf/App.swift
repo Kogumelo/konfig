@@ -1,4 +1,5 @@
 import AppKit
+import ConfCore
 
 /// Ponto de entrada: app de documentos AppKit, menu montado em código (sem nib).
 @main
@@ -17,16 +18,33 @@ enum App {
     }
 }
 
-/// Decide o tipo do arquivo pela extensão. O macOS não declara `.jsonc` (dá a ele um tipo
-/// "dinâmico"), e a declaração do `Info.plist` só vale depois que o app é registrado.
+/// Decide o tipo do arquivo pelo nome. O macOS não declara `.jsonc` nem `.env` (dá a eles
+/// um tipo "dinâmico", e a um arquivo chamado só `.env`, `public.data`), e a declaração
+/// do `Info.plist` só vale depois que o app é registrado.
 final class ControladorDocumentos: NSDocumentController {
     override func typeForContents(of url: URL) throws -> String {
-        switch url.pathExtension.lowercased() {
-        case "toml": return "public.toml"
-        case "json": return "public.json"
-        case "jsonc": return "br.com.kogut.km-conf.jsonc"
-        default: return try super.typeForContents(of: url)
+        if url.pathExtension.lowercased() == "jsonc" { return "br.com.kogut.km-conf.jsonc" }
+        switch Formato(nomeArquivo: url.lastPathComponent) {
+        case .toml?: return "public.toml"
+        case .json?: return "public.json"
+        case .env?: return "br.com.kogut.km-conf.env"
+        case nil: return try super.typeForContents(of: url)
         }
+    }
+
+    /// O painel de abrir aceita qualquer arquivo: `.env` e `.env.local` não têm um tipo
+    /// que o painel reconheça. Quem decide se dá para abrir é `typeForContents`.
+    override func beginOpenPanel(_ openPanel: NSOpenPanel, forTypes inTypes: [String]?,
+                                 completionHandler: @escaping (Int) -> Void) {
+        super.beginOpenPanel(openPanel, forTypes: nil, completionHandler: completionHandler)
+    }
+}
+
+extension Formato {
+    /// Formato pelo tipo de documento do `Info.plist` (último recurso, sem nome de arquivo).
+    init(tipo: String) {
+        let t = tipo.lowercased()
+        if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else { self = .toml }
     }
 }
 

@@ -35,7 +35,7 @@ final class ModeloJanela {
     // modo Texto
     var rascunho = "" { didSet { validarRascunho() } }
     private(set) var erroRascunho: ErroLeitura?
-    /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC").
+    /// Nome do formato do rascunho válido ("TOML", "JSON", "JSONC", ".env").
     private(set) var formatoRascunho = "TOML"
     private(set) var rascunhoDifere = false
     var erroAoAplicar: String?
@@ -226,23 +226,34 @@ final class Documento: NSDocument {
         return try DispatchQueue.main.sync { try f() }
     }
 
-    /// Formato pela extensão do arquivo; sem ela, pelo tipo que o macOS deu ao arquivo.
+    /// Formato pelo nome do arquivo (extensão e nomes de `.env`); sem ele, pelo tipo
+    /// que o macOS deu ao arquivo. O tipo sozinho não basta: para um arquivo chamado
+    /// `.env` o sistema devolve `public.data` e `pathExtension` vazio.
     private var formatoLido: Formato?
 
     override func read(from url: URL, ofType typeName: String) throws {
-        formatoLido = Formato(extensao: url.pathExtension)
+        formatoLido = Formato(nomeArquivo: url.lastPathComponent)
         try super.read(from: url, ofType: typeName)
     }
 
     override func read(from data: Data, ofType typeName: String) throws {
         let bytes = [UInt8](data)
-        let formato = formatoLido ?? fileURL.flatMap { Formato(extensao: $0.pathExtension) }
-            ?? (typeName.lowercased().contains("json") ? .json : .toml)
+        let formato = formatoLido ?? fileURL.flatMap { Formato(nomeArquivo: $0.lastPathComponent) }
+            ?? Formato(tipo: typeName)
         naPrincipal {
             modelo.carregar(bytes, formato: formato)
             modelo.nomeArquivo = fileURL?.lastPathComponent ?? "sem título"
             undoManager?.removeAllActions()
         }
+    }
+
+    /// Arquivos `.env` mantêm o nome: sem isto o ⌘S gravaria `.env` como `.env.env`
+    /// e `.env.local` como `.env.local.env` (o `NSDocument` acrescenta a extensão do tipo).
+    override func fileNameExtension(forType typeName: String, saveOperation: NSDocument.SaveOperationType) -> String? {
+        if Formato(tipo: typeName) == .env, let url = fileURL, Formato(nomeArquivo: url.lastPathComponent) == .env {
+            return url.pathExtension.isEmpty ? nil : url.pathExtension
+        }
+        return super.fileNameExtension(forType: typeName, saveOperation: saveOperation)
     }
 
     override func data(ofType typeName: String) throws -> Data {
@@ -252,7 +263,7 @@ final class Documento: NSDocument {
     }
 
     override func writeSafely(to url: URL, ofType typeName: String, for op: NSDocument.SaveOperationType) throws {
-        // Cópia do arquivo como estava no disco antes de sobrescrever: <arquivo>.toml.bak, <arquivo>.json.bak
+        // Cópia do arquivo como estava no disco antes de sobrescrever: <arquivo>.toml.bak, <arquivo>.json.bak, .env.bak
         if op != .autosaveElsewhereOperation, FileManager.default.fileExists(atPath: url.path) {
             let bak = url.appendingPathExtension("bak")
             try? FileManager.default.removeItem(at: bak)

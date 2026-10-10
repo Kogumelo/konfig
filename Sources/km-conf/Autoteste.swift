@@ -3,8 +3,9 @@ import ConfCore
 
 /// `KM_CONF_AUTOTESTE="<arquivo>|<pasta-de-saída>" km-conf.app/Contents/MacOS/km-conf`
 ///
-/// O arquivo é uma cópia de `exemplos/config.toml` ou `exemplos/config.jsonc` (o
-/// roteiro de cada formato conta com os campos desses exemplos).
+/// O arquivo é uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
+/// `exemplos/config.jsonc` ou `exemplos/.env`, com o mesmo nome (o roteiro de cada
+/// formato conta com os campos desses exemplos; o `.env` é reconhecido pelo nome).
 ///
 /// Diagnóstico sem teclado: abre o arquivo, altera valores pelo mesmo caminho
 /// dos controles, salva pela ação do ⌘S (`saveDocument:`), desfaz pela do ⌘Z
@@ -27,10 +28,22 @@ enum Autoteste {
 
     static func passo(_ espera: Double = 0.3, _ f: @escaping () -> Void) { passos.append((espera, f)) }
 
-    /// O que muda de um formato para outro: como estragar o texto, como acrescentar
-    /// uma chave e como simular outro programa gravando no arquivo.
+    /// O que muda de um formato para outro: que campos alterar, como estragar o texto,
+    /// como acrescentar uma chave e como simular outro programa gravando no arquivo.
     struct Roteiro {
         var nomeFormato: String
+        /// Seção mostrada nas fotos.
+        var secao = "servidor"
+        /// Campo cujo comentário `a | b | c` vira escolha (JSON puro não tem comentários).
+        var escolha: (campo: String, opcoes: [String])? = ("servidor.nivel_log", ["debug", "info", "aviso", "erro"])
+        /// Três alterações, cada uma numa linha diferente.
+        var alteracoes: [(campo: String, valor: Valor)] = [
+            ("banco.pool", .inteiro(20)),
+            ("servidor.portas", .lista([.inteiro(8080), .inteiro(8443), .inteiro(9000)])),
+            ("servidor.nivel_log", .texto("aviso")),
+        ]
+        /// O campo da primeira alteração: valor original e o que o "outro programa" grava.
+        var pool: (original: Valor, externo: Valor) = (.inteiro(12), .inteiro(30))
         var textoInvalido: (String) -> String
         var textoValido: (String) -> String
         var caminhoNovo: Caminho
@@ -38,18 +51,41 @@ enum Autoteste {
     }
 
     static func roteiro(_ arquivo: URL) -> Roteiro {
-        if Formato(extensao: arquivo.pathExtension) == .json {
+        switch Formato(nomeArquivo: arquivo.lastPathComponent) {
+        case .json? where arquivo.pathExtension.lowercased() == "jsonc":
             return Roteiro(nomeFormato: "JSONC",
                            textoInvalido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": ,") },
                            textoValido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": 3,\n  \"novo\": 1,") },
                            caminhoNovo: [.chave("novo")],
                            externo: ("\"pool\": 12", "\"pool\": 30"))
+        case .json?:
+            return Roteiro(nomeFormato: "JSON",
+                           escolha: nil,
+                           textoInvalido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": ,") },
+                           textoValido: { $0.replacingOccurrences(of: "\"versao\": 3,", with: "\"versao\": 3,\n    \"novo\": 1,") },
+                           caminhoNovo: [.chave("novo")],
+                           externo: ("\"pool\": 12", "\"pool\": 30"))
+        case .env?:
+            return Roteiro(nomeFormato: ".env",
+                           secao: "raiz",
+                           escolha: ("NIVEL_LOG", ["debug", "info", "aviso", "erro"]),
+                           alteracoes: [
+                               ("BANCO_POOL", .texto("20")),
+                               ("NIVEL_LOG", .texto("aviso")),
+                               ("APP_TITULO", .texto("Painel Kogumelo 2")),
+                           ],
+                           pool: (.texto("12"), .texto("30")),
+                           textoInvalido: { $0 + "\nSEM_IGUAL\n" },
+                           textoValido: { $0 + "\nNOVA=1\n" },
+                           caminhoNovo: [.chave("NOVA")],
+                           externo: ("BANCO_POOL=12", "BANCO_POOL=30"))
+        default:
+            return Roteiro(nomeFormato: "TOML",
+                           textoInvalido: { $0 + "\n[novo]\nx = \n" },
+                           textoValido: { $0 + "\n[novo]\nx = 1\n" },
+                           caminhoNovo: [.chave("novo"), .chave("x")],
+                           externo: ("pool = 12", "pool = 30"))
         }
-        return Roteiro(nomeFormato: "TOML",
-                       textoInvalido: { $0 + "\n[novo]\nx = \n" },
-                       textoValido: { $0 + "\n[novo]\nx = 1\n" },
-                       caminhoNovo: [.chave("novo"), .chave("x")],
-                       externo: ("pool = 12", "pool = 30"))
     }
 
     static func proximo() {
@@ -108,21 +144,20 @@ enum Autoteste {
             registra(janela?.isVisible == true, "janela aberta: \(janela?.title ?? "-")")
             registra(m.edicao.documento?.nomeFormato == r.nomeFormato, "lido como \(r.nomeFormato)")
             registra((try? m.edicao.resultado()).map { Data($0) } == original, "abrir sem alterar: mesmos bytes")
-            m.selecao = "servidor"
+            m.selecao = r.secao
         }
         passo(0.8) {
             foto(janela, saida.appendingPathComponent("1-formulario.png"))
-            registra(campo("servidor.nivel_log")?.tipo == .escolha(["debug", "info", "aviso", "erro"]),
-                     "comentário 'a | b | c' virou escolha")
-        }
-        // Três alterações, cada uma como um evento separado (como três cliques).
-        passo { comoEvento(doc) { m.definir(campo("banco.pool")!, .valor(.inteiro(20))) } }
-        passo {
-            comoEvento(doc) {
-                m.definir(campo("servidor.portas")!, .valor(.lista([.inteiro(8080), .inteiro(8443), .inteiro(9000)])))
+            if let e = r.escolha {
+                registra(campo(e.campo)?.tipo == .escolha(e.opcoes), "comentário 'a | b | c' virou escolha")
+            } else {
+                registra(m.secoes.flatMap(\.campos).allSatisfy { $0.ajuda == nil }, "sem comentários, nenhum campo com ajuda")
             }
         }
-        passo { comoEvento(doc) { m.definir(campo("servidor.nivel_log")!, .valor(.texto("aviso"))) } }
+        // Três alterações, cada uma como um evento separado (como três cliques).
+        for a in r.alteracoes {
+            passo { comoEvento(doc) { m.definir(campo(a.campo)!, .valor(a.valor)) } }
+        }
         passo(0.8) {
             registra(doc.isDocumentEdited, "documento marcado como editado (título com '— Editado')")
             registra(m.trechos.count == 3, "painel de alterações com 3 trechos")
@@ -143,7 +178,8 @@ enum Autoteste {
         // ⌘Z três vezes
         for _ in 0..<3 { passo { comoEvento(doc) { doc.undoManager?.undo() } } }
         passo(0.5) {
-            registra(m.edicao.valor(campo("banco.pool")!.caminho) == .inteiro(12), "⌘Z desfez banco.pool (20 → 12)")
+            let pool = r.alteracoes[0].campo
+            registra(m.edicao.valor(campo(pool)!.caminho) == r.pool.original, "⌘Z desfez \(pool) (20 → 12)")
             registra(m.trechos.count == 3, "depois do ⌘Z, as 3 linhas voltam a ficar pendentes em relação ao disco")
             NSApp.sendAction(#selector(NSDocument.save(_:)), to: doc, from: nil)
         }
@@ -171,9 +207,9 @@ enum Autoteste {
             try? externo.write(to: arquivo, atomically: true, encoding: .utf8)
         }
         passo(3) {
-            registra(m.edicao.valor(campo("banco.pool")?.caminho ?? []) == .inteiro(30),
+            registra(m.edicao.valor(campo(r.alteracoes[0].campo)?.caminho ?? []) == r.pool.externo,
                      "arquivo alterado por outro programa e sem edição pendente: recarregado (pool = 30)")
-            m.selecao = "banco"
+            if r.secao != "raiz" { m.selecao = "banco" }
         }
         passo(0.8) {
             foto(janela, saida.appendingPathComponent("4-recarregado.png"))
