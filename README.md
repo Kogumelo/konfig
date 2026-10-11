@@ -125,6 +125,12 @@ Aberto sem arquivo, o app mostra o painel de abrir.
   Os comentários acima da linha e no fim dela aparecem como ajuda do campo. Em
   JSONC e JSON5 valem `// …` e `/* … */`, acima do membro ou no fim da linha (antes ou
   depois da vírgula) — inclusive a dica de escolha `a | b | c`.
+  Comentário só vira ajuda se estiver colado à linha (sem linha em branco no meio).
+  O comentário do começo do arquivo, separado da primeira chave ou seção por uma
+  linha em branco, não é de nenhum campo: aparece em **Sobre o arquivo**, no topo
+  da barra lateral, como está no arquivo (recuos mantidos), só para leitura.
+  Comentários soltos no meio do arquivo (com linha em branco antes da chave
+  seguinte) continuam só no modo Texto.
 - **Texto** (⌘2): o arquivo inteiro editável, com cores simples (em JSON, JSONC e
   JSON5: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza; em
   JSON5 também as chaves sem aspas e os textos com aspas simples; em INI: `[seções]`
@@ -221,7 +227,8 @@ só diz que o edita, também com papel Editor e `LSHandlerRank` Alternate.
   formulário, e é ela que é gravada.
 - Raiz que não é objeto: uma lista de objetos vira um grupo de itens; qualquer
   outro valor aparece como um campo só, "(raiz)".
-- Comentários antes do `{` inicial não aparecem como ajuda (não pertencem a nenhum campo).
+- Comentários `//` antes do `{` inicial não aparecem como ajuda (não pertencem a nenhum campo):
+  ficam em "Sobre o arquivo".
 - Listas que mudam de quantidade de itens seguem a regra do TOML: reescritas com o
   recuo do primeiro item e a vírgula final se havia (em lista de uma linha ou de
   várias); comentários dentro delas se perdem. Mudando só valores de itens, os

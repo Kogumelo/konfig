@@ -152,6 +152,49 @@ public enum Campos {
         return r
     }
 
+    /// Comentário de abertura do arquivo: os blocos de comentário antes da primeira linha
+    /// com conteúdo que não ficaram presos a nenhum campo (um bloco colado à primeira chave
+    /// ou seção, sem linha em branco no meio, já é a ajuda dela). Sem o marcador (`#`, `;`,
+    /// `//`) e um espaço depois dele, mas com o recuo que vem a seguir; linhas em branco
+    /// entre blocos viram uma linha vazia. `nil` se não houver.
+    public static func comentarioDeAbertura(_ doc: DocumentoConf) -> String? {
+        let marcadores: [String]
+        switch doc.formato {
+        case .toml, .yaml, .env: marcadores = ["#"]
+        case .ini: marcadores = [";", "#"]
+        case .json, .json5: marcadores = ["//"]
+        }
+        var texto = String(decoding: doc.bytes, as: UTF8.self)
+        if texto.hasPrefix("\u{FEFF}") { texto.removeFirst() }
+        var blocos: [[String]] = []
+        var atual: [String] = []
+        var colado = false   // o último bloco termina logo acima da primeira linha com conteúdo
+        // `\r\n` é um caractere só em Swift: `isNewline` pega `\n` e `\r\n`
+        for linha in texto.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            let l = linha.trimmingCharacters(in: .whitespaces)
+            if l.isEmpty {
+                if !atual.isEmpty { blocos.append(atual); atual = [] }
+                continue
+            }
+            guard let m = marcadores.first(where: { l.hasPrefix($0) }) else {
+                // nada se prende ao `{` inicial do JSON (em YAML, o bloco colado ao `---` já é
+                // a ajuda da primeira chave)
+                colado = !atual.isEmpty && !doc.formato.ehJSON
+                break
+            }
+            var resto = l.dropFirst(m.count)
+            if resto.first == " " { resto = resto.dropFirst() }
+            atual.append(String(resto))
+        }
+        if !atual.isEmpty { blocos.append(atual) }
+        if colado { blocos.removeLast() }
+        var linhas = blocos.map { $0.joined(separator: "\n") }.joined(separator: "\n\n")
+            .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        while linhas.first?.isEmpty == true { linhas.removeFirst() }
+        while linhas.last?.isEmpty == true { linhas.removeLast() }
+        return linhas.isEmpty ? nil : linhas.joined(separator: "\n")
+    }
+
     /// Nome amigável para um item de `[[lista]]`: valor de `nome`, `name`, `titulo`, `title` ou `id`.
     static func nomeDoItem(_ campos: [Campo]) -> String? {
         for k in ["nome", "name", "titulo", "title", "id", "rotulo", "label"] {
