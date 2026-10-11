@@ -10,6 +10,8 @@ APP=Konfig.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/pt-BR.lproj"
 cp Info.plist "$APP/Contents/Info.plist"
 cp "$BIN" "$APP/Contents/MacOS/Konfig"
+# ícone do app: gerado de icone/konfig.svg por icone/gerar.sh
+cp icone/Konfig.icns "$APP/Contents/Resources/Konfig.icns"
 # pasta de idioma: faz o AppKit usar português nos textos prontos ("Editado", avisos)
 printf '"CFBundleName" = "Konfig";\n' > "$APP/Contents/Resources/pt-BR.lproj/InfoPlist.strings"
 codesign --force --sign - "$APP"
