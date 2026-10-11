@@ -10,6 +10,8 @@
 	<string>br.com.kogut.konfig</string>
 	<key>CFBundleExecutable</key>
 	<string>Konfig</string>
+	<key>CFBundleIconFile</key>
+	<string>Konfig</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

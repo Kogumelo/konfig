@@ -1,5 +1,7 @@
 # Konfig
 
+<img src="icone/konfig.svg" width="128" alt="Ícone do Konfig: interruptor ligado com a letra K">
+
 Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
 (JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`),
 **JSON5** (chaves sem aspas, aspas simples, hexadecimal, `Infinity`…), **.env**
@@ -41,6 +43,9 @@ JSONC, JSON5, .env, INI e YAML (ver [Próximos formatos](#próximos-formatos)).
 Gera `Konfig.app` nesta pasta, assinado localmente (`codesign --sign -`).
 Precisa do Xcode (Swift 6) e roda no macOS 14 ou mais novo. O build em release
 demora alguns minutos.
+
+O ícone vem pronto em `icone/Konfig.icns`; o desenho de origem é `icone/konfig.svg`.
+Depois de mudar o desenho, refaça o `.icns` com `./icone/gerar.sh`.
 
 Testes do núcleo (leitores, gravação, campos):
 
