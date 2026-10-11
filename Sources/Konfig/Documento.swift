@@ -52,6 +52,11 @@ final class ModeloJanela {
             && !nomeArquivo.lowercased().hasSuffix(".jsonc")
     }
 
+    /// Comentário no começo do arquivo que não é ajuda de nenhum campo (ver `Campos.comentarioDeAbertura`).
+    private(set) var comentarioDeAbertura: String?
+    /// Seleção da página "Sobre o arquivo" na barra lateral (não colide com o id de uma seção).
+    static let idAbertura = "\u{1}abertura"
+
     var secaoSelecionada: Secao? { secoes.first { $0.id == selecao } ?? secoes.first }
 
     // MARK: Carregar e recalcular
@@ -79,7 +84,11 @@ final class ModeloJanela {
 
     func recalcular() {
         if let doc = edicao.documento { secoes = Campos.secoes(doc) } else { secoes = [] }
-        if selecao == nil || !secoes.contains(where: { $0.id == selecao }) { selecao = secoes.first?.id }
+        comentarioDeAbertura = edicao.documento.flatMap(Campos.comentarioDeAbertura)
+        let abertura = selecao == Self.idAbertura && comentarioDeAbertura != nil
+        if selecao == nil || (!abertura && !secoes.contains(where: { $0.id == selecao })) {
+            selecao = secoes.first?.id ?? (comentarioDeAbertura != nil ? Self.idAbertura : nil)
+        }
 
         if discoLido?.bytes != edicao.disco {
             discoLido = (edicao.disco, try? formato.ler(edicao.disco))

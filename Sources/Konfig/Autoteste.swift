@@ -205,6 +205,13 @@ enum Autoteste {
             registra(m.avisoJSONC == (arquivo.pathExtension.lowercased() == "json" && r.nomeFormato == "JSONC"),
                      "aviso 'JSON com comentários' \(m.avisoJSONC ? "mostrado" : "não mostrado")")
             registra((try? m.edicao.resultado()).map { Data($0) } == original, "abrir sem alterar: mesmos bytes")
+            if m.comentarioDeAbertura != nil { m.selecao = ModeloJanela.idAbertura }
+        }
+        passo(0.8) {
+            if let c = m.comentarioDeAbertura {
+                foto(janela, saida.appendingPathComponent("0-abertura.png"))
+                registra(true, "comentário de abertura em 'Sobre o arquivo': \(c.split(separator: "\n").first ?? "")")
+            }
             m.selecao = r.secao
         }
         passo(0.8) {

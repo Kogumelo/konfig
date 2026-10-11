@@ -96,6 +96,11 @@ struct BarraLateral: View {
     var body: some View {
         List(selection: $modelo.selecao) {
             Section(modelo.nomeArquivo) {
+                if modelo.comentarioDeAbertura != nil {
+                    Label("Sobre o arquivo", systemImage: "text.quote")
+                        .tag(ModeloJanela.idAbertura)
+                        .help("O comentário do começo do arquivo")
+                }
                 ForEach(nos) { no in
                     switch no {
                     case .secao(let s):
@@ -173,6 +178,28 @@ struct Formulario: View {
             } actions: {
                 Button(modelo.edicao.somenteTexto ? "Editar no modo Texto" : "Corrigir no modo Texto") { modelo.trocarModo(.texto) }
             }
+        } else if modelo.selecao == ModeloJanela.idAbertura, let c = modelo.comentarioDeAbertura {
+            Form {
+                Section {
+                    // monoespaçado, como no arquivo: listas e recuos do comentário ficam alinhados
+                    Text(c)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } header: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sobre o arquivo")
+                            .font(.title2.bold())
+                            .foregroundStyle(.primary)
+                        Text("comentário do começo do arquivo · para mudar, use o modo Texto")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                    .textCase(nil)
+                    .padding(.bottom, 4)
+                }
+            }
+            .formStyle(.grouped)
         } else if let s = modelo.secaoSelecionada {
             Form {
                 Section {
