@@ -1,0 +1,1019 @@
+/* English is the development language: keys are the English text itself (see NSLocalizedString in Sources/). */
+
+/* MARK: - ConfCore/EditSession.swift */
+
+/* Parse error; %@ = what was found */
+"invalid value: %@" = "invalid value: %@";
+
+/* Save error; %@ = key path */
+"the key '%@' does not exist in the file" = "the key '%@' does not exist in the file";
+
+/* Save error; %@ = format name, e.g. TOML */
+"the file is not valid %@" = "the file is not valid %@";
+
+/* MARK: - ConfCore/EnvReader.swift */
+
+/* Parse error fragment: what was found */
+"end of file" = "end of file";
+
+/* Parse error fragment: what was found */
+"end of line" = "end of line";
+
+/* Parse error fragment: what was found */
+"tab" = "tab";
+
+/* Parse error fragment: what was found */
+"space" = "space";
+
+/* Parse error */
+"invalid UTF-8" = "invalid UTF-8";
+
+/* Parse error */
+"invalid UTF-8 (incomplete sequence)" = "invalid UTF-8 (incomplete sequence)";
+
+/* core4: EnvReader.swift, INIReader.swift, INIFormat.swift, Writer.swift */
+
+/* Parse error */
+"the value must fit on a single line (or be quoted)" = "the value must fit on a single line (or be quoted)";
+
+/* Parse error */
+"'#' starts a comment; to use it in the value, put the value in quotes" = "'#' starts a comment; to use it in the value, put the value in quotes";
+
+/* Parse error fragment: what was found; %02X = byte value */
+"the character 0x%02X" = "the character 0x%02X";
+
+/* Parse error; %@ = what was found */
+"expected end of line, found %@" = "expected end of line, found %@";
+
+/* Parse error */
+"a lone CR (without LF) is not an accepted line break" = "a lone CR (without LF) is not an accepted line break";
+
+/* Parse error */
+"invalid UTF-8 (the file must be UTF-8)" = "invalid UTF-8 (the file must be UTF-8)";
+
+/* Parse error; %@ = what was found */
+"expected a variable name (letters, digits, '_', '.' or '-'), found %@" = "expected a variable name (letters, digits, '_', '.' or '-'), found %@";
+
+/* Parse error; %@ = key */
+"missing '=' and the value after '%@'" = "missing '=' and the value after '%@'";
+
+/* Parse error; %1$@ = key, %2$@ = what was found */
+"expected '=' after '%@', found %@" = "expected '=' after '%@', found %@";
+
+/* Parse error; %@ = what was found */
+"only a '#' comment may follow the quotes, found %@" = "only a '#' comment may follow the quotes, found %@";
+
+/* Parse error; %1$@ = key, %2$ld = line */
+"the variable '%@' was already defined on line %ld; repeated keys are not accepted" = "the variable '%@' was already defined on line %ld; repeated keys are not accepted";
+
+/* Parse error */
+"double quote opened here and never closed" = "double quote opened here and never closed";
+
+/* Parse error */
+"single quote opened here and never closed" = "single quote opened here and never closed";
+
+/* MARK: - ConfCore/Fields.swift */
+
+/* Value kind name */
+"text" = "text";
+
+/* Value kind name */
+"integer" = "integer";
+
+/* Value kind name */
+"decimal" = "decimal";
+
+/* Value kind name */
+"yes/no" = "yes/no";
+
+/* Value kind name */
+"date-time with offset" = "date-time with offset";
+
+/* Value kind name */
+"local date-time" = "local date-time";
+
+/* Value kind name */
+"date" = "date";
+
+/* Value kind name */
+"time" = "time";
+
+/* Label of a document whose root is a single value */
+"(root)" = "(root)";
+
+/* Field kind */
+"choice" = "choice";
+
+/* Field kind; %@ = plural kind of the items, e.g. integers */
+"list of %@" = "list of %@";
+
+/* Field kind */
+"raw text" = "raw text";
+
+/* Plural kind, used in list of %@ */
+"texts" = "texts";
+
+/* Plural kind, used in list of %@ */
+"integers" = "integers";
+
+/* Plural kind, used in list of %@ */
+"decimals" = "decimals";
+
+/* Plural kind, used in list of %@ */
+"date-times" = "date-times";
+
+/* Plural kind, used in list of %@ */
+"dates" = "dates";
+
+/* Plural kind, used in list of %@ */
+"times" = "times";
+
+/* Plural kind, used in list of %@ */
+"lists" = "lists";
+
+/* Plural kind, used in list of %@ */
+"tables" = "tables";
+
+/* Plural kind, used in list of %@ */
+"nulls" = "nulls";
+
+/* Root section subtitle (TOML) */
+"keys outside any table" = "keys outside any table";
+
+/* Root section subtitle (JSON) */
+"keys of the root object" = "keys of the root object";
+
+/* Root section subtitle (JSON/YAML, root is not an object) */
+"the file's root value" = "the file's root value";
+
+/* Root section title */
+"Root" = "Root";
+
+/* Root section title (.env) */
+"Variables" = "Variables";
+
+/* Root section subtitle (.env) */
+"KEY=value (all values are text)" = "KEY=value (all values are text)";
+
+/* Root section title (INI) */
+"General" = "General";
+
+/* Root section subtitle (INI) */
+"keys before the first section" = "keys before the first section";
+
+/* Root section subtitle (YAML) */
+"keys of the root map" = "keys of the root map";
+
+/* Title of an array-of-tables item without a name; %ld = position starting at 1 */
+"item %ld" = "item %ld";
+
+/* MARK: - ConfCore/Format.swift */
+
+/* Value problem */
+"TOML has no null value" = "TOML has no null value";
+
+/* Value problem; %@ = number such as inf or nan */
+"JSON does not accept %@" = "JSON does not accept %@";
+
+/* Value problem; %@ = format name */
+"%@ has no date type" = "%@ has no date type";
+
+/* Value problem */
+"in .env every value is text" = "in .env every value is text";
+
+/* Value problem (INI) */
+"an array 'key[]' needs at least one item; to delete it, use Text mode" = "an array 'key[]' needs at least one item; to delete it, use Text mode";
+
+/* Value problem */
+"in INI every array item is text" = "in INI every array item is text";
+
+/* Value problem */
+"in INI every value is text" = "in INI every value is text";
+
+/* Value problem */
+"YAML (core schema 1.2) has no date type; save it as text" = "YAML (core schema 1.2) has no date type; save it as text";
+
+/* MARK: - ConfCore/INIFormat.swift */
+
+/* Save error */
+"INI has no multi-line values or control characters" = "INI has no multi-line values or control characters";
+
+/* Save error */
+"the value needs quotes (it has ';', '#', leading/trailing spaces or starts with a quote) and contains both double and single quotes; INI has no escapes" = "the value needs quotes (it has ';', '#', leading/trailing spaces or starts with a quote) and contains both double and single quotes; INI has no escapes";
+
+/* MARK: - ConfCore/INIReader.swift */
+
+/* Parse error */
+"the value must fit on a single line" = "the value must fit on a single line";
+
+/* Parse error */
+"';' or '#' after a space starts a comment; to use it in the value, put the value in quotes" = "';' or '#' after a space starts a comment; to use it in the value, put the value in quotes";
+
+/* Parse error */
+"section without ']' at the end (only a ';' or '#' comment may follow the ']')" = "section without ']' at the end (only a ';' or '#' comment may follow the ']')";
+
+/* Parse error */
+"section without a name" = "section without a name";
+
+/* Parse error */
+"the line is not a section ([name]), a pair (key = value) or a comment (; or #)" = "the line is not a section ([name]), a pair (key = value) or a comment (; or #)";
+
+/* Parse error; %@ = separator */
+"missing key name before '%@'" = "missing key name before '%@'";
+
+/* Parse error */
+"missing array name before '[]'" = "missing array name before '[]'";
+
+/* Parse error */
+"double quote opened here and not closed on the same line" = "double quote opened here and not closed on the same line";
+
+/* Parse error */
+"single quote opened here and not closed on the same line" = "single quote opened here and not closed on the same line";
+
+/* Parse error */
+"only a ';' or '#' comment may follow the quotes" = "only a ';' or '#' comment may follow the quotes";
+
+/* Parse error; %1$@ = key, %2$ld = line, %3$@ = key */
+"the key '%@' already appeared on line %ld before the first section; repeated keys are not accepted (for an array, use '%@[]' on every line)" = "the key '%@' already appeared on line %ld before the first section; repeated keys are not accepted (for an array, use '%@[]' on every line)";
+
+/* Parse error; %1$@ = key, %2$ld = line, %3$@ = section, %4$@ = key */
+"the key '%@' already appeared on line %ld in section [%@]; repeated keys are not accepted (for an array, use '%@[]' on every line)" = "the key '%@' already appeared on line %ld in section [%@]; repeated keys are not accepted (for an array, use '%@[]' on every line)";
+
+/* MARK: - ConfCore/JSONReader.swift */
+
+/* YAML parse error */
+"invalid UTF-8 (the file must be in UTF-8)" = "invalid UTF-8 (the file must be in UTF-8)";
+
+/* Parse error; %@ = the JSONC extension used (comment, trailing comma) */
+"%@ is not allowed in plain JSON (only in JSONC)" = "%@ is not allowed in plain JSON (only in JSONC)";
+
+/* Parse error fragment: JSONC extension */
+"comment" = "comment";
+
+/* Parse error */
+"'/*' comment without '*/'" = "'/*' comment without '*/'";
+
+/* Parse error */
+"single-quoted key is not JSON; use double quotes" = "single-quoted key is not JSON; use double quotes";
+
+/* Parse error; %@ = what was found */
+"expected a quoted key, found %@" = "expected a quoted key, found %@";
+
+/* Parse error; %@ = what was found */
+"expected ':' after the key, found %@" = "expected ':' after the key, found %@";
+
+/* Parse error fragment: JSONC extension */
+"trailing comma after the last item" = "trailing comma after the last item";
+
+/* Parse error; first %@ = closing bracket, second %@ = what was found */
+"expected ',' or '%@', found %@" = "expected ',' or '%@', found %@";
+
+/* Parse error; %@ = what was found */
+"expected a value, found %@" = "expected a value, found %@";
+
+/* Parse error; %ld = maximum depth */
+"nesting too deep (more than %ld levels)" = "nesting too deep (more than %ld levels)";
+
+/* Parse error */
+"single-quoted string is not JSON; use double quotes" = "single-quoted string is not JSON; use double quotes";
+
+/* Parse error; %@ = literal such as true */
+"invalid value; expected '%@'" = "invalid value; expected '%@'";
+
+/* Parse error */
+"invalid number: missing digit" = "invalid number: missing digit";
+
+/* Parse error */
+"number with a leading zero is not JSON" = "number with a leading zero is not JSON";
+
+/* Parse error */
+"invalid number: missing digit after the point" = "invalid number: missing digit after the point";
+
+/* Parse error */
+"invalid number: missing digit in the exponent" = "invalid number: missing digit in the exponent";
+
+/* Parse error; %@ = Infinity or NaN */
+"invalid number; expected '%@'" = "invalid number; expected '%@'";
+
+/* Parse error */
+"hexadecimal number without digits" = "hexadecimal number without digits";
+
+/* Parse error */
+"number with a leading zero is not JSON5" = "number with a leading zero is not JSON5";
+
+/* Parse error */
+"in an unquoted key, only the \\uXXXX escape is allowed" = "in an unquoted key, only the \\uXXXX escape is allowed";
+
+/* Parse error */
+"\\u escape that does not form an identifier in an unquoted key" = "\\u escape that does not form an identifier in an unquoted key";
+
+/* Parse error; %@ = what was found */
+"invalid key: use quotes or an identifier (letters, digits, _ and $; cannot start with a digit), found %@" = "invalid key: use quotes or an identifier (letters, digits, _ and $; cannot start with a digit), found %@";
+
+/* Parse error */
+"string without a closing quote" = "string without a closing quote";
+
+/* Parse error */
+"line break inside a string; use \\n or \\ at the end of the line" = "line break inside a string; use \\n or \\ at the end of the line";
+
+/* Parse error */
+"line break inside a string; use \\n" = "line break inside a string; use \\n";
+
+/* Parse error */
+"control character inside a string; use an escape such as \\t or \\u00XX" = "control character inside a string; use an escape such as \\t or \\u00XX";
+
+/* Parse error */
+"\\u escape of a high surrogate without the low pair" = "\\u escape of a high surrogate without the low pair";
+
+/* Parse error */
+"\\u escape of a high surrogate followed by something that is not the low pair" = "\\u escape of a high surrogate followed by something that is not the low pair";
+
+/* Parse error */
+"lone \\u escape of a low surrogate" = "lone \\u escape of a low surrogate";
+
+/* Parse error */
+"\\0 escape followed by a digit is not JSON5" = "\\0 escape followed by a digit is not JSON5";
+
+/* Parse error */
+"\\x escape needs 2 hexadecimal digits" = "\\x escape needs 2 hexadecimal digits";
+
+/* Parse error; %@ = escaped character */
+"escape '\\%@' is not allowed in JSON5" = "escape '\\%@' is not allowed in JSON5";
+
+/* Parse error; %@ = escaped character */
+"invalid escape '\\%@'" = "invalid escape '\\%@'";
+
+/* Parse error */
+"\\u escape needs 4 hexadecimal digits" = "\\u escape needs 4 hexadecimal digits";
+
+/* Parse error; %@ = format name (JSON, JSON5) */
+"file without a %@ value" = "file without a %@ value";
+
+/* Parse error; first %@ = format name, second %@ = what was found */
+"text after the end of the %@ value: %@" = "text after the end of the %@ value: %@";
+
+/* MARK: - ConfCore/Model.swift */
+
+/* Value kind name */
+"array" = "array";
+
+/* Value kind name */
+"table" = "table";
+
+/* Value kind name */
+"null" = "null";
+
+/* Parse error position; %ld = line, %ld = column, %@ = message */
+"line %ld, column %ld: %@" = "line %ld, column %ld: %@";
+
+/* Parse error; %@ = format name, %@ = position and message */
+"%@ outside the subset supported by the form, at %@" = "%@ outside the subset supported by the form, at %@";
+
+/* Parse error; %@ = format name, %@ = position and message */
+"invalid %@ at %@" = "invalid %@ at %@";
+
+/* MARK: - ConfCore/TOMLReader.swift */
+
+/* Parse error */
+"expected a single value" = "expected a single value";
+
+/* Parse error */
+"lone CR (\\r); use LF or CRLF as line break" = "lone CR (\\r); use LF or CRLF as line break";
+
+/* Parse error; %@ = what was found */
+"expected line break, found %@" = "expected line break, found %@";
+
+/* Parse error */
+"lone CR (\\r) inside comment" = "lone CR (\\r) inside comment";
+
+/* Parse error */
+"control character not allowed in comment" = "control character not allowed in comment";
+
+/* Parse error; %@ = what was found */
+"expected end of line after the value, found %@" = "expected end of line after the value, found %@";
+
+/* Parse error; %@ = what was found */
+"expected key, found %@" = "expected key, found %@";
+
+/* Parse error */
+"multiline string cannot be a key" = "multiline string cannot be a key";
+
+/* Parse error; %@ = key */
+"'%@' already has a value that is not a table" = "'%@' already has a value that is not a table";
+
+/* Parse error; %@ = what was found */
+"expected ']]' at the end of the header, found %@" = "expected ']]' at the end of the header, found %@";
+
+/* Parse error; %@ = what was found */
+"expected ']' at the end of the header, found %@" = "expected ']' at the end of the header, found %@";
+
+/* Parse error; %@ = key */
+"'%@' is an array or table written inline in a value and cannot be extended" = "'%@' is an array or table written inline in a value and cannot be extended";
+
+/* Parse error; %@ = key */
+"'%@' was already defined and is not an array of tables" = "'%@' was already defined and is not an array of tables";
+
+/* Parse error; %@ = table name */
+"table '%@' was already defined" = "table '%@' was already defined";
+
+/* Parse error; %@ = what was found */
+"expected '=' after the key, found %@" = "expected '=' after the key, found %@";
+
+/* Parse error; %@ = table name */
+"table '%@' was already defined and cannot be redefined with a dotted key" = "table '%@' was already defined and cannot be redefined with a dotted key";
+
+/* Parse error; %@ = table name */
+"'%@' is an inline table and does not accept new keys" = "'%@' is an inline table and does not accept new keys";
+
+/* Parse error; %@ = key */
+"key '%@' was already defined" = "key '%@' was already defined";
+
+/* Parse error; %@ = what was found */
+"expected value, found %@" = "expected value, found %@";
+
+/* Parse error */
+"expected value after '='" = "expected value after '='";
+
+/* Parse error; %@ = true or false */
+"invalid value (expected %@)" = "invalid value (expected %@)";
+
+/* Parse error */
+"incomplete escape at end of file" = "incomplete escape at end of file";
+
+/* Parse error; %@ = escape such as \u */
+"incomplete escape %@" = "incomplete escape %@";
+
+/* Parse error; %@ = escape such as \u */
+"escape %@ with invalid hexadecimal digit" = "escape %@ with invalid hexadecimal digit";
+
+/* Parse error; %@ = escape such as \u */
+"escape %@ is not a valid Unicode character" = "escape %@ is not a valid Unicode character";
+
+/* Parse error; %@ = escape found */
+"invalid escape '%@'" = "invalid escape '%@'";
+
+/* Parse error */
+"string without closing quote" = "string without closing quote";
+
+/* Parse error */
+"string without closing quote before end of line" = "string without closing quote before end of line";
+
+/* Parse error */
+"control character not allowed in string" = "control character not allowed in string";
+
+/* Parse error */
+"string without closing apostrophe" = "string without closing apostrophe";
+
+/* Parse error */
+"string without closing apostrophe before end of line" = "string without closing apostrophe before end of line";
+
+/* Parse error; %@ = closing delimiter */
+"multiline string without closing %@" = "multiline string without closing %@";
+
+/* Parse error */
+"too many quotes at the end of multiline string" = "too many quotes at the end of multiline string";
+
+/* Parse error */
+"lone CR (\\r) inside string" = "lone CR (\\r) inside string";
+
+/* Parse error */
+"too many apostrophes at the end of multiline string" = "too many apostrophes at the end of multiline string";
+
+/* Parse error */
+"array without closing ']'" = "array without closing ']'";
+
+/* Parse error; %@ = what was found */
+"expected ',' or ']' in array, found %@" = "expected ',' or ']' in array, found %@";
+
+/* Parse error; %@ = key */
+"'%@' cannot be extended" = "'%@' cannot be extended";
+
+/* Parse error; %@ = key */
+"key '%@' was already defined in this table" = "key '%@' was already defined in this table";
+
+/* Parse error */
+"trailing comma in inline table is not allowed in TOML 1.0" = "trailing comma in inline table is not allowed in TOML 1.0";
+
+/* Parse error */
+"inline table without closing '}'" = "inline table without closing '}'";
+
+/* Parse error; %@ = what was found */
+"expected ',' or '}' in inline table, found %@" = "expected ',' or '}' in inline table, found %@";
+
+/* Parse error */
+"'_' must be between two digits" = "'_' must be between two digits";
+
+/* Parse error; %@ = number text */
+"invalid number: '%@'" = "invalid number: '%@'";
+
+/* Parse error */
+"number without digits" = "number without digits";
+
+/* Parse error */
+"integer out of 64-bit range" = "integer out of 64-bit range";
+
+/* Parse error; %@ = value text */
+"invalid value: '%@'" = "invalid value: '%@'";
+
+/* Parse error; %@ = number text */
+"leading zeros are not allowed: '%@'" = "leading zeros are not allowed: '%@'";
+
+/* Parse error; %@ = number text */
+"decimal needs digits after the point: '%@'" = "decimal needs digits after the point: '%@'";
+
+/* Parse error; %@ = number text */
+"exponent without digits: '%@'" = "exponent without digits: '%@'";
+
+/* Parse error */
+"invalid time (use HH:MM:SS)" = "invalid time (use HH:MM:SS)";
+
+/* Parse error */
+"time out of range" = "time out of range";
+
+/* Parse error */
+"fraction of second without digits" = "fraction of second without digits";
+
+/* Parse error; %@ = time text */
+"invalid time: '%@'" = "invalid time: '%@'";
+
+/* Parse error; %@ = date text */
+"invalid date: '%@'" = "invalid date: '%@'";
+
+/* Parse error; %@ = date text */
+"date not in the calendar: '%@'" = "date not in the calendar: '%@'";
+
+/* MARK: - ConfCore/Writer.swift */
+
+/* Save error; %1$@ = format name, %2$@ = parse error */
+"the current file is not valid %@ (%@); edit it in Text mode" = "the current file is not valid %@ (%@); edit it in Text mode";
+
+/* Save error; %@ = key path */
+"the key '%@' no longer exists in the file" = "the key '%@' no longer exists in the file";
+
+/* Save error; %1$@ = key path, %2$@ = format name, %3$@ = parse error */
+"value of '%@' is not valid %@: %@" = "value of '%@' is not valid %@: %@";
+
+/* Save error; %1$@ = key path, %2$@ = problem description */
+"'%@': %@" = "'%@': %@";
+
+/* Save error; %@ = key path */
+"could not locate '%@'" = "could not locate '%@'";
+
+/* Save error; %1$@ = format name, %2$@ = parse error */
+"the result would not be valid %@ (%@); nothing was saved" = "the result would not be valid %@ (%@); nothing was saved";
+
+/* Save error */
+"the re-parsed result does not match the requested values; nothing was saved" = "the re-parsed result does not match the requested values; nothing was saved";
+
+/* Save error */
+"the result would have a comment or trailing comma, which this file's plain JSON does not have; nothing was saved" = "the result would have a comment or trailing comma, which this file's plain JSON does not have; nothing was saved";
+
+/* MARK: - ConfCore/YAMLReader.swift */
+
+/* YAML parse error; %@ = the unsupported feature (e.g. 'anchor (&)') */
+"%@ is outside the subset Konfig edits in Form mode; the file opens in Text mode only" = "%@ is outside the subset Konfig edits in Form mode; the file opens in Text mode only";
+
+/* YAML parse error; %@ = code, e.g. 0x1F or U+0085 */
+"control character (%@) is not allowed in YAML" = "control character (%@) is not allowed in YAML";
+
+/* YAML parse error */
+"lone CR (without LF) is not an accepted line break" = "lone CR (without LF) is not an accepted line break";
+
+/* YAML parse error */
+"'#' attached to the value: a comment needs a space before it" = "'#' attached to the value: a comment needs a space before it";
+
+/* YAML feature outside the subset; %@ = the directive */
+"directive (%@)" = "directive (%@)";
+
+/* YAML feature outside the subset */
+"more than one document in the file" = "more than one document in the file";
+
+/* YAML feature outside the subset */
+"more than one document in the file (second '---')" = "more than one document in the file (second '---')";
+
+/* YAML parse error */
+"unexpected text (less indentation than at the start of the document?)" = "unexpected text (less indentation than at the start of the document?)";
+
+/* YAML feature outside the subset */
+"anchor (&)" = "anchor (&)";
+
+/* YAML feature outside the subset */
+"alias (*)" = "alias (*)";
+
+/* YAML feature outside the subset */
+"type tag (!)" = "type tag (!)";
+
+/* YAML feature outside the subset */
+"complex key ('? ')" = "complex key ('? ')";
+
+/* YAML parse error */
+"a block list ('- ') cannot start on this line" = "a block list ('- ') cannot start on this line";
+
+/* YAML parse error */
+"tab in indentation (YAML indentation uses spaces only)" = "tab in indentation (YAML indentation uses spaces only)";
+
+/* YAML parse error */
+"a map ('key: value') cannot start on this line; put the value in quotes or on its own line" = "a map ('key: value') cannot start on this line; put the value in quotes or on its own line";
+
+/* YAML parse error */
+"unexpected ':': a map cannot start here (multi-line key, or a value with ': ' that needs quotes)" = "unexpected ':': a map cannot start here (multi-line key, or a value with ': ' that needs quotes)";
+
+/* YAML parse error */
+"unexpected text after the value" = "unexpected text after the value";
+
+/* YAML feature outside the subset */
+"complex key (collection as key)" = "complex key (collection as key)";
+
+/* YAML feature outside the subset */
+"empty key (': value')" = "empty key (': value')";
+
+/* YAML parse error; %@ = the character */
+"character '%@' cannot start an unquoted key" = "character '%@' cannot start an unquoted key";
+
+/* YAML parse error */
+"multi-line keys are not accepted" = "multi-line keys are not accepted";
+
+/* YAML parse error */
+"invalid key" = "invalid key";
+
+/* YAML feature outside the subset */
+"merge key ('<<:')" = "merge key ('<<:')";
+
+/* YAML feature outside the subset; %@ = the key */
+"null key ('%@')" = "null key ('%@')";
+
+/* YAML parse error */
+"list item ('- ') where a map key was expected (check the indentation)" = "list item ('- ') where a map key was expected (check the indentation)";
+
+/* YAML parse error; %@ = the key */
+"expected ':' after key '%@'" = "expected ':' after key '%@'";
+
+/* YAML parse error */
+"':' must be followed by a space or end of line" = "':' must be followed by a space or end of line";
+
+/* YAML parse error; %@ = the key, %ld = line number */
+"key '%@' already appeared on line %ld in this map; duplicate keys are not accepted" = "key '%@' already appeared on line %ld in this map; duplicate keys are not accepted";
+
+/* YAML parse error; %ld = column number */
+"unexpected indentation (expected a key at column %ld)" = "unexpected indentation (expected a key at column %ld)";
+
+/* YAML parse error; %ld = column number */
+"unexpected indentation (expected '- ' at column %ld)" = "unexpected indentation (expected '- ' at column %ld)";
+
+/* YAML parse error; %@ = the character */
+"'%@' is reserved and cannot start an unquoted value" = "'%@' is reserved and cannot start an unquoted value";
+
+/* YAML parse error; %@ = the character */
+"unexpected character '%@'" = "unexpected character '%@'";
+
+/* YAML parse error */
+"unclosed quotes" = "unclosed quotes";
+
+/* YAML parse error */
+"document marker inside a quoted string" = "document marker inside a quoted string";
+
+/* YAML parse error */
+"continuation line of a quoted string is not indented enough" = "continuation line of a quoted string is not indented enough";
+
+/* YAML parse error */
+"unclosed double quotes" = "unclosed double quotes";
+
+/* YAML parse error */
+"unclosed single quotes" = "unclosed single quotes";
+
+/* YAML parse error; %@ = the escape, e.g. \x; %ld = digit count */
+"escape '%@' needs %ld hexadecimal digits" = "escape '%@' needs %ld hexadecimal digits";
+
+/* YAML parse error; %@ = hex code */
+"invalid character escape (U+%@)" = "invalid character escape (U+%@)";
+
+/* YAML parse error; %@ = the escape, e.g. \q */
+"escape '%@' does not exist in YAML" = "escape '%@' does not exist in YAML";
+
+/* YAML parse error */
+"the indentation indicator ranges from 1 to 9" = "the indentation indicator ranges from 1 to 9";
+
+/* YAML parse error; %@ = | or > */
+"only indicators, spaces and a comment may follow '%@'" = "only indicators, spaces and a comment may follow '%@'";
+
+/* YAML parse error */
+"unexpected text after the block indicator" = "unexpected text after the block indicator";
+
+/* YAML parse error */
+"blank line with more spaces than the first line of the block text" = "blank line with more spaces than the first line of the block text";
+
+/* YAML parse error */
+"tab in the block text indentation (YAML indentation uses spaces only)" = "tab in the block text indentation (YAML indentation uses spaces only)";
+
+/* YAML parse error */
+"'#' attached: a comment needs a space before it" = "'#' attached: a comment needs a space before it";
+
+/* YAML parse error */
+"document marker inside a flow collection" = "document marker inside a flow collection";
+
+/* YAML parse error */
+"insufficient indentation inside the flow collection" = "insufficient indentation inside the flow collection";
+
+/* YAML parse error */
+"unclosed flow collection" = "unclosed flow collection";
+
+/* YAML parse error */
+"block list ('- ') inside a flow collection" = "block list ('- ') inside a flow collection";
+
+/* YAML parse error; %@ = the character */
+"unexpected character '%@' in the flow collection" = "unexpected character '%@' in the flow collection";
+
+/* YAML parse error */
+"missing ']' to close the list" = "missing ']' to close the list";
+
+/* YAML parse error */
+"missing '}' to close the map" = "missing '}' to close the map";
+
+/* YAML parse error */
+"',' without a value before it" = "',' without a value before it";
+
+/* YAML parse error; %@ = ] or } */
+"expected ',' or '%@'" = "expected ',' or '%@'";
+
+/* MARK: - Konfig/App.swift */
+
+/* Menu item; %@ = app name */
+"About %@" = "About %@";
+
+/* Menu item; %@ = app name */
+"Hide %@" = "Hide %@";
+
+/* Menu item */
+"Hide Others" = "Hide Others";
+
+/* Menu item */
+"Show All" = "Show All";
+
+/* Menu item; %@ = app name */
+"Quit %@" = "Quit %@";
+
+/* Menu item */
+"Open Recent" = "Open Recent";
+
+/* Menu item */
+"Clear Menu" = "Clear Menu";
+
+/* Menu title */
+"File" = "File";
+
+/* Menu item */
+"New" = "New";
+
+/* Menu item */
+"Open…" = "Open…";
+
+/* Menu item */
+"Close" = "Close";
+
+/* Menu item */
+"Save" = "Save";
+
+/* Menu item */
+"Duplicate" = "Duplicate";
+
+/* Menu item */
+"Rename…" = "Rename…";
+
+/* Menu item */
+"Move To…" = "Move To…";
+
+/* Menu item */
+"Revert To" = "Revert To";
+
+/* Menu title */
+"Edit" = "Edit";
+
+/* Menu item / toolbar button */
+"Undo" = "Undo";
+
+/* Menu item */
+"Redo" = "Redo";
+
+/* Menu item */
+"Cut" = "Cut";
+
+/* Menu item */
+"Copy" = "Copy";
+
+/* Menu item */
+"Paste" = "Paste";
+
+/* Menu item */
+"Select All" = "Select All";
+
+/* Menu title (submenu of Edit) */
+"Find" = "Find";
+
+/* Menu item */
+"Find…" = "Find…";
+
+/* Menu item */
+"Find Next" = "Find Next";
+
+/* Menu title */
+"View" = "View";
+
+/* Menu item (View) / toolbar picker; Form mode */
+"Form" = "Form";
+
+/* Menu item (View) / toolbar picker; Text mode */
+"Text" = "Text";
+
+/* Menu item */
+"Show Sidebar" = "Show Sidebar";
+
+/* Menu item (View); toggles the changes panel */
+"Hide Changes" = "Hide Changes";
+
+/* Menu title */
+"Window" = "Window";
+
+/* Menu item */
+"Minimize" = "Minimize";
+
+/* Menu item */
+"Zoom" = "Zoom";
+
+/* Menu item */
+"Bring All to Front" = "Bring All to Front";
+
+/* MARK: - Konfig/Document.swift */
+
+/* Menu item (View); toggles the changes panel */
+"Show Changes" = "Show Changes";
+
+/* Window/file name of a document without a file */
+"untitled" = "untitled";
+
+/* Undo action name */
+"Edit Comment" = "Edit Comment";
+
+/* Save error; %ld = line, %ld = column, %@ = parse error message */
+"The text has an error on line %ld, column %ld: %@. Fix or discard it before saving." = "The text has an error on line %ld, column %ld: %@. Fix or discard it before saving.";
+
+/* Undo action name; %@ = key */
+"Change %@" = "Change %@";
+
+/* Undo action name */
+"Edit Text" = "Edit Text";
+
+/* MARK: - Konfig/FieldView.swift */
+
+/* Badge next to a field changed since opening/saving */
+"changed" = "changed";
+
+/* Field label tooltip; %@ = key path, %ld = line number */
+"%@ · line %ld" = "%@ · line %ld";
+
+/* Validation error under a field */
+"invalid integer" = "invalid integer";
+
+/* Validation error under a field */
+"invalid decimal" = "invalid decimal";
+
+/* Tooltip on the UTC offset next to a date field */
+"Time zone from the file (kept when saving)" = "Time zone from the file (kept when saving)";
+
+/* Placeholder of the box that adds an item to an array field */
+"+ add" = "+ add";
+
+/* Tooltip on an array item's remove button; %@ = the item */
+"Remove %@" = "Remove %@";
+
+/* Validation error when adding an array item; %@ = value kind name */
+"not a %@" = "not a %@";
+
+/* MARK: - Konfig/TextModeView.swift */
+
+/* Parse error position; %ld = line, %ld = column, %@ = message */
+"Line %ld, column %ld: %@" = "Line %ld, column %ld: %@";
+
+/* Preamble page button */
+"Discard" = "Discard";
+
+/* Preamble page button */
+"Apply" = "Apply";
+
+/* Text mode subtitle */
+"The whole file. Takes effect when going back to the Form, clicking Apply or saving." = "The whole file. Takes effect when going back to the Form, clicking Apply or saving.";
+
+/* Tooltip on the Discard button in Text mode */
+"Reverts to the document's text" = "Reverts to the document's text";
+
+/* Tooltip on the Apply button in Text mode */
+"Applies the text to the document (⌘↩)" = "Applies the text to the document (⌘↩)";
+
+/* Text mode warning for text outside the form subset; line, message */
+"Line %ld: %@. When saving, the text is written as is, without the form's checks." = "Line %ld: %@. When saving, the text is written as is, without the form's checks.";
+
+/* Text mode status; %@ = format name */
+"Valid %@ — not applied yet" = "Valid %@ — not applied yet";
+
+/* Text mode note when a JSON file gains JSONC extensions */
+"· the file was plain JSON; not every program accepts comments or trailing commas" = "· the file was plain JSON; not every program accepts comments or trailing commas";
+
+/* Text mode status; %@ = format name */
+"Valid %@" = "Valid %@";
+
+/* MARK: - Konfig/WindowView.swift */
+
+/* Toolbar help */
+"Undo (⌘Z)" = "Undo (⌘Z)";
+
+/* Toolbar picker: Form or Text */
+"Mode" = "Mode";
+
+/* Toolbar help */
+"Form (⌘1) or text of the whole file (⌘2)" = "Form (⌘1) or text of the whole file (⌘2)";
+
+/* Toolbar button: changes panel */
+"Changes" = "Changes";
+
+/* Toolbar help */
+"Show or hide the changes panel (⌥⌘I)" = "Show or hide the changes panel (⌥⌘I)";
+
+/* Sidebar item: the preamble comment page */
+"About the file" = "About the file";
+
+/* Sidebar help */
+"The comment at the beginning of the file" = "The comment at the beginning of the file";
+
+/* Sidebar notice */
+"JSON with comments" = "JSON with comments";
+
+/* Sidebar notice help */
+"This .json has comments or trailing commas (JSONC, like VS Code's settings.json and tsconfig.json). Konfig keeps everything when saving, but not every program that reads JSON accepts this file." = "This .json has comments or trailing commas (JSONC, like VS Code's settings.json and tsconfig.json). Konfig keeps everything when saving, but not every program that reads JSON accepts this file.";
+
+/* Empty sidebar */
+"Text mode only" = "Text mode only";
+
+/* Empty sidebar; %@ = format name */
+"File with a %@ error" = "File with a %@ error";
+
+/* Empty sidebar / empty form */
+"Empty file" = "Empty file";
+
+/* Sidebar dot help */
+"Section with unsaved changes" = "Section with unsaved changes";
+
+/* Form placeholder; %@ = format name */
+"This %@ can only be edited as text" = "This %@ can only be edited as text";
+
+/* Form placeholder; %@ = format name */
+"The file is not valid %@" = "The file is not valid %@";
+
+/* Form placeholder button */
+"Edit in Text mode" = "Edit in Text mode";
+
+/* Form placeholder button */
+"Fix in Text mode" = "Fix in Text mode";
+
+/* Empty section (JSON) */
+"This object has no values of its own. To create keys, use Text mode." = "This object has no values of its own. To create keys, use Text mode.";
+
+/* Empty section (.env) */
+"The file has no variables. To create them, use Text mode." = "The file has no variables. To create them, use Text mode.";
+
+/* Empty section (INI) */
+"This section has no keys. To create them, use Text mode." = "This section has no keys. To create them, use Text mode.";
+
+/* Empty section (YAML) */
+"This map has no values of its own. To create keys, use Text mode." = "This map has no values of its own. To create keys, use Text mode.";
+
+/* Empty section (TOML) */
+"This table has no values of its own. To create keys, use Text mode." = "This table has no values of its own. To create keys, use Text mode.";
+
+/* Empty file placeholder */
+"Use Text mode to write the content." = "Use Text mode to write the content.";
+
+/* Section subtitle suffix; %ld = position, %ld = total */
+" · item %ld of %ld" = " · item %ld of %ld";
+
+/* Preamble page subtitle; %@ = comment marker, e.g. # */
+"comment at the beginning of the file, without the %@ on each line" = "comment at the beginning of the file, without the %@ on each line";
+
+/* Preamble page footer */
+"Takes effect when leaving the box or on Apply. Empty text deletes the comment." = "Takes effect when leaving the box or on Apply. Empty text deletes the comment.";
+
+/* INI comment markers, shown in %@ of the preamble page subtitle */
+"; or #" = "; or #";
+
+/* Changes panel header */
+"UNSAVED CHANGES" = "UNSAVED CHANGES";
+
+/* Changes panel */
+"No changes. The file on disk is the same as what is on screen." = "No changes. The file on disk is the same as what is on screen.";
+
+/* Changes panel */
+"When saving, only these lines change. A copy of the current file is kept in .bak." = "When saving, only these lines change. A copy of the current file is kept in .bak.";
+
+/* Changes panel card; %ld = line number */
+"line %ld" = "line %ld";
+
+/* Changes panel card help */
+"Click to go to the field" = "Click to go to the field";

@@ -4,30 +4,30 @@ import Testing
 
 private func b(_ s: String) -> [UInt8] { Array(s.utf8) }
 private func s(_ b: [UInt8]) -> String { String(decoding: b, as: UTF8.self) }
-private func k(_ partes: String...) -> Caminho { partes.map { .chave($0) } }
+private func k(_ parts: String...) -> ValuePath { parts.map { .key($0) } }
 
-/// Aplica uma alteração num JSON e devolve o texto novo.
-private func troca(_ texto: String, _ caminho: Caminho, _ v: Valor) throws -> String {
-    s(try Gravar.aplicar(b(texto), alteracoes: [caminho: .valor(v)], formato: .json))
+/// Applies one change to a JSON text and returns the new text.
+private func swap(_ text: String, _ path: ValuePath, _ v: Value) throws -> String {
+    s(try Writer.apply(b(text), changes: [path: .value(v)], format: .json))
 }
 
-/// Casos da JSONTestSuite (nst/JSONTestSuite, `test_parsing`), copiados em `Fixtures/JSONTestSuite`.
-enum SuiteJSON {
-    static let pasta = Suite.pasta.appendingPathComponent("JSONTestSuite/test_parsing")
+/// JSONTestSuite cases (nst/JSONTestSuite, `test_parsing`), copied into `Fixtures/JSONTestSuite`.
+enum JSONSuite {
+    static let folder = Suite.folder.appendingPathComponent("JSONTestSuite/test_parsing")
 
-    static let todos: [String] = (try? FileManager.default.contentsOfDirectory(atPath: pasta.path))?
+    static let all: [String] = (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?
         .filter { $0.hasSuffix(".json") }.sorted() ?? []
-    static let y = todos.filter { $0.hasPrefix("y_") }
-    static let n = todos.filter { $0.hasPrefix("n_") }
-    static let i = todos.filter { $0.hasPrefix("i_") }
+    static let y = all.filter { $0.hasPrefix("y_") }
+    static let n = all.filter { $0.hasPrefix("n_") }
+    static let i = all.filter { $0.hasPrefix("i_") }
 
-    static func bytes(_ caso: String) -> [UInt8] {
-        Array(try! Data(contentsOf: pasta.appendingPathComponent(caso)))
+    static func bytes(_ testCase: String) -> [UInt8] {
+        Array(try! Data(contentsOf: folder.appendingPathComponent(testCase)))
     }
 
-    /// `n_` recusados pelo JSON puro mas aceitos em JSONC: o único "erro" deles é
-    /// comentário ou vírgula final.
-    static let nAceitosEmJSONC: Set<String> = [
+    /// `n_` cases rejected by plain JSON but accepted in JSONC: their only "error" is a
+    /// comment or a trailing comma.
+    static let nAcceptedInJSONC: Set<String> = [
         "n_array_extra_comma.json",                    // ["",]
         "n_array_number_and_comma.json",               // [1,]
         "n_object_trailing_comma.json",                // {"id":0,}
@@ -36,11 +36,11 @@ enum SuiteJSON {
         "n_structure_object_with_comment.json",        // {"a":/*comment*/"b"}
     ]
 
-    /// O que o Konfig faz com cada caso `i_` (a especificação deixa a critério de quem lê).
-    /// `true` = aceita. Documentado no README.
-    static let casosI: [String: Bool] = [
-        // números fora do alcance: aceitos; inteiro que não cabe em 64 bits vira decimal
-        // aproximado, expoente enorme vira infinito ou zero. Só são reescritos se editados.
+    /// What Konfig does with each `i_` case (the specification leaves it up to the reader).
+    /// `true` = accepted. Documented in the README.
+    static let casesI: [String: Bool] = [
+        // out-of-range numbers: accepted; an integer that does not fit in 64 bits becomes an
+        // approximate decimal, a huge exponent becomes infinity or zero. Rewritten only if edited.
         "i_number_double_huge_neg_exp.json": true,
         "i_number_huge_exp.json": true,
         "i_number_neg_int_huge_exp.json": true,
@@ -51,11 +51,11 @@ enum SuiteJSON {
         "i_number_too_big_neg_int.json": true,
         "i_number_too_big_pos_int.json": true,
         "i_number_very_big_negative_int.json": true,
-        // BOM UTF-8 no começo: aceito e mantido ao gravar
+        // UTF-8 BOM at the start: accepted and kept on save
         "i_structure_UTF-8_BOM_empty_object.json": true,
-        // 500 níveis de aninhamento: recusado (o limite é 128, protege a pilha)
+        // 500 nesting levels: rejected (the limit is 128, to protect the stack)
         "i_structure_500_nested_arrays.json": false,
-        // escapes \u de surrogate sem par: recusados (não cabem num texto Unicode válido)
+        // unpaired surrogate \u escapes: rejected (they do not fit in valid Unicode text)
         "i_object_key_lone_2nd_surrogate.json": false,
         "i_string_1st_surrogate_but_2nd_missing.json": false,
         "i_string_1st_valid_surrogate_2nd_invalid.json": false,
@@ -66,7 +66,7 @@ enum SuiteJSON {
         "i_string_invalid_surrogate.json": false,
         "i_string_inverted_surrogates_U+1D11E.json": false,
         "i_string_lone_second_surrogate.json": false,
-        // bytes que não são UTF-8 válido (inclusive ISO-8859-1 e UTF-16): recusados
+        // bytes that are not valid UTF-8 (including ISO-8859-1 and UTF-16): rejected
         "i_string_UTF-16LE_with_BOM.json": false,
         "i_string_UTF-8_invalid_sequence.json": false,
         "i_string_UTF8_surrogate_U+D800.json": false,
@@ -82,95 +82,95 @@ enum SuiteJSON {
         "i_string_utf16LE_no_BOM.json": false,
     ]
 
-    static func fixture(_ nome: String) -> [UInt8] {
-        Array(try! Data(contentsOf: Suite.pasta.appendingPathComponent("json/" + nome)))
+    static func fixture(_ name: String) -> [UInt8] {
+        Array(try! Data(contentsOf: Suite.folder.appendingPathComponent("json/" + name)))
     }
 }
 
-// MARK: - Conformidade (JSONTestSuite)
+// MARK: - Conformance (JSONTestSuite)
 
-@Test func suiteJSONTemOsCasos() {
-    #expect(SuiteJSON.y.count == 95)
-    #expect(SuiteJSON.n.count == 188)
-    #expect(SuiteJSON.i.count == 35)
-    #expect(Set(SuiteJSON.casosI.keys) == Set(SuiteJSON.i), "todo caso i_ precisa estar documentado")
+@Test func jsonSuiteHasTheCases() {
+    #expect(JSONSuite.y.count == 95)
+    #expect(JSONSuite.n.count == 188)
+    #expect(JSONSuite.i.count == 35)
+    #expect(Set(JSONSuite.casesI.keys) == Set(JSONSuite.i), "every i_ case must be documented")
 }
 
-@Test(arguments: SuiteJSON.y)
-func jsonY(_ caso: String) throws {
-    let bytes = SuiteJSON.bytes(caso)
-    let doc: DocumentoConf
-    do { doc = try LeitorJSON.ler(bytes, estrito: true) } catch {
-        Issue.record("recusou um caso válido: \(error)")
+@Test(arguments: JSONSuite.y)
+func jsonY(_ testCase: String) throws {
+    let bytes = JSONSuite.bytes(testCase)
+    let doc: ConfDocument
+    do { doc = try JSONReader.parse(bytes, strict: true) } catch {
+        Issue.record("rejected a valid case: \(error)")
         return
     }
-    #expect(!doc.usaExtensoesJSONC)
-    // o mesmo valor que o JSONSerialization do sistema lê — menos chave repetida:
-    // ele fica com a primeira; aqui vale a última, como em JavaScript, Python e Go
-    if caso == "y_object_duplicated_key.json" {
-        #expect(doc.valorRaiz == .tabela(Tabela(pares: [.init(chave: "a", valor: .texto("c"))])))
-    } else if let esperado = try? JSONSerialization.jsonObject(with: Data(bytes), options: [.fragmentsAllowed]) {
-        let d = CompararJSON.valor(doc.valorRaiz, esperado, "$")
+    #expect(!doc.usesJSONCExtensions)
+    // the same value the system's JSONSerialization reads — except for a repeated key:
+    // it keeps the first; here the last one wins, as in JavaScript, Python and Go
+    if testCase == "y_object_duplicated_key.json" {
+        #expect(doc.rootValue == .table(Table(pairs: [.init(key: "a", value: .text("c"))])))
+    } else if let expected = try? JSONSerialization.jsonObject(with: Data(bytes), options: [.fragmentsAllowed]) {
+        let d = CompareJSON.value(doc.rootValue, expected, "$")
         #expect(d.isEmpty, "\(d.prefix(5).joined(separator: "\n"))")
     }
-    // e o leitor JSONC (padrão) aceita igual
-    #expect(try LeitorJSON.ler(bytes).valorRaiz == doc.valorRaiz)
+    // and the JSONC reader (the default) accepts it the same way
+    #expect(try JSONReader.parse(bytes).rootValue == doc.rootValue)
 }
 
-@Test(arguments: SuiteJSON.n)
-func jsonN(_ caso: String) {
-    let bytes = SuiteJSON.bytes(caso)
+@Test(arguments: JSONSuite.n)
+func jsonN(_ testCase: String) {
+    let bytes = JSONSuite.bytes(testCase)
     do {
-        let doc = try LeitorJSON.ler(bytes, estrito: true)
-        Issue.record("JSON puro aceitou um caso inválido: \(doc.valorRaiz)")
+        let doc = try JSONReader.parse(bytes, strict: true)
+        Issue.record("plain JSON accepted an invalid case: \(doc.rootValue)")
     } catch {
-        #expect(error.linha >= 1 && error.coluna >= 1)
+        #expect(error.line >= 1 && error.column >= 1)
     }
-    let aceitoEmJSONC = (try? LeitorJSON.ler(bytes)) != nil
-    #expect(aceitoEmJSONC == SuiteJSON.nAceitosEmJSONC.contains(caso),
-            "JSONC \(aceitoEmJSONC ? "aceitou" : "recusou") \(caso)")
+    let acceptedInJSONC = (try? JSONReader.parse(bytes)) != nil
+    #expect(acceptedInJSONC == JSONSuite.nAcceptedInJSONC.contains(testCase),
+            "JSONC \(acceptedInJSONC ? "accepted" : "rejected") \(testCase)")
 }
 
-@Test(arguments: SuiteJSON.i)
-func jsonI(_ caso: String) {
-    let aceito = (try? LeitorJSON.ler(SuiteJSON.bytes(caso), estrito: true)) != nil
-    #expect(aceito == SuiteJSON.casosI[caso], "\(caso): \(aceito ? "aceito" : "recusado")")
+@Test(arguments: JSONSuite.i)
+func jsonI(_ testCase: String) {
+    let accepted = (try? JSONReader.parse(JSONSuite.bytes(testCase), strict: true)) != nil
+    #expect(accepted == JSONSuite.casesI[testCase], "\(testCase): \(accepted ? "accepted" : "rejected")")
 }
 
-/// Compara com o que o `JSONSerialization` leu.
-enum CompararJSON {
-    static func valor(_ v: Valor, _ j: Any, _ onde: String) -> [String] {
+/// Compares with what `JSONSerialization` read.
+enum CompareJSON {
+    static func value(_ v: Value, _ j: Any, _ place: String) -> [String] {
         switch (v, j) {
-        case (.tabela(let t), let d as NSDictionary):
+        case (.table(let t), let d as NSDictionary):
             var r: [String] = []
-            if t.pares.count != d.count { r.append("\(onde): \(t.pares.count) chaves, esperado \(d.count)") }
+            if t.pairs.count != d.count { r.append("\(place): \(t.pairs.count) keys, expected \(d.count)") }
             for case let (k as String, x) in d {
-                guard let y = t[k] else { r.append("\(onde): falta \(k)"); continue }
-                r += valor(y, x, onde + "." + k)
+                guard let y = t[k] else { r.append("\(place): missing \(k)"); continue }
+                r += value(y, x, place + "." + k)
             }
             return r
-        case (.lista(let l), let a as NSArray):
-            guard l.count == a.count else { return ["\(onde): \(l.count) itens, esperado \(a.count)"] }
-            return zip(l, a).enumerated().flatMap { i, p in valor(p.0, p.1, "\(onde)[\(i)]") }
-        case (.texto(let x), let y as String):
-            return x.unicodeScalars.elementsEqual(y.unicodeScalars) ? [] : ["\(onde): \(x.debugDescription) ≠ \(y.debugDescription)"]
-        case (.nulo, is NSNull):
+        case (.array(let l), let a as NSArray):
+            guard l.count == a.count else { return ["\(place): \(l.count) items, expected \(a.count)"] }
+            return zip(l, a).enumerated().flatMap { i, p in value(p.0, p.1, "\(place)[\(i)]") }
+        case (.text(let x), let y as String):
+            return x.unicodeScalars.elementsEqual(y.unicodeScalars) ? [] : ["\(place): \(x.debugDescription) ≠ \(y.debugDescription)"]
+        case (.null, is NSNull):
             return []
-        case (.booleano(let x), _) where booleano(j) != nil:
-            return x == booleano(j) ? [] : ["\(onde): \(x) ≠ \(j)"]
-        case (.inteiro(let x), _) where booleano(j) == nil && numero(j) != nil:
-            return Double(x) == numero(j) ? [] : ["\(onde): \(x) ≠ \(j)"]
-        case (.decimal(let x), _) where booleano(j) == nil && numero(j) != nil:
-            // o JSONSerialization converte por NSDecimalNumber e pode errar no último dígito
-            let y = numero(j)!
-            return x == y || abs(x - y) <= abs(x) * 1e-15 ? [] : ["\(onde): \(x) ≠ \(j)"]
+        case (.boolean(let x), _) where boolean(j) != nil:
+            return x == boolean(j) ? [] : ["\(place): \(x) ≠ \(j)"]
+        case (.integer(let x), _) where boolean(j) == nil && number(j) != nil:
+            return Double(x) == number(j) ? [] : ["\(place): \(x) ≠ \(j)"]
+        case (.decimal(let x), _) where boolean(j) == nil && number(j) != nil:
+            // JSONSerialization converts through NSDecimalNumber and may be off in the last digit
+            let y = number(j)!
+            return x == y || abs(x - y) <= abs(x) * 1e-15 ? [] : ["\(place): \(x) ≠ \(j)"]
         default:
-            return ["\(onde): \(v) ≠ \(j)"]
+            return ["\(place): \(v) ≠ \(j)"]
         }
     }
 
-    /// `true`/`false` do JSONSerialization (no Mac, um CFBoolean; no Linux, NSNumber do tipo "c" ou Bool).
-    static func booleano(_ j: Any) -> Bool? {
+    /// `true`/`false` from JSONSerialization (on the Mac, a CFBoolean; on Linux, an NSNumber of type "c" or a Bool).
+    static func boolean(_ j: Any) -> Bool? {
         #if canImport(Darwin)
         if let n = j as? NSNumber, CFGetTypeID(n) == CFBooleanGetTypeID() { return n.boolValue }
         return nil
@@ -180,291 +180,291 @@ enum CompararJSON {
         #endif
     }
 
-    static func numero(_ j: Any) -> Double? {
+    static func number(_ j: Any) -> Double? {
         if let n = j as? NSNumber { return n.doubleValue }
         if let i = j as? Int { return Double(i) }
         return j as? Double
     }
 }
 
-// MARK: - Ida e volta: abrir e gravar sem alterar é idêntico; alterar muda só o trecho
+// MARK: - Round trip: opening and saving without changes is identical; a change touches only its hunk
 
-private let jsonEspeciais: [String: [UInt8]] = [
-    "tsconfig": SuiteJSON.fixture("tsconfig.json"),
+private let jsonSpecials: [String: [UInt8]] = [
+    "tsconfig": JSONSuite.fixture("tsconfig.json"),
     "crlf-bom": [0xEF, 0xBB, 0xBF] + b("{\r\n  // c\r\n  \"a\": 1,\r\n  \"b\": [\r\n    \"x\",\r\n    \"y\",\r\n  ],\r\n  \"c\": {\"d\": null}\r\n}\r\n"),
-    "raiz-lista": b("[\n  {\"nome\": \"a\", \"n\": 1},\n  {\"nome\": \"b\", \"n\": 2}\n]\n"),
-    "raiz-escalar": b("  \"só um texto\"  \n"),
-    "escapes": b(#"{"url": "http:\/\/exemplo.com\/a", "nome": "José 😀", "t": "a\tb\nc"}"#),
-    "numeros": b(#"{"a": 1.50, "b": 1.5e3, "c": 2E+10, "d": -0.0, "e": 0, "f": 12345678901234567890, "g": [1, 2.0, 3e1]}"#),
-    "repetida": b(#"{"a": 1, "b": 2, "a": 3}"#),
+    "root-array": b("[\n  {\"name\": \"a\", \"n\": 1},\n  {\"name\": \"b\", \"n\": 2}\n]\n"),
+    "root-scalar": b("  \"just some text\"  \n"),
+    "escapes": b(#"{"url": "http:\/\/example.com\/a", "name": "José 😀", "t": "a\tb\nc"}"#),
+    "numbers": b(#"{"a": 1.50, "b": 1.5e3, "c": 2E+10, "d": -0.0, "e": 0, "f": 12345678901234567890, "g": [1, 2.0, 3e1]}"#),
+    "repeated-key": b(#"{"a": 1, "b": 2, "a": 3}"#),
 ]
 
-@Test(arguments: SuiteJSON.y + Array(jsonEspeciais.keys).sorted())
-func jsonSemAlteracaoMesmosBytes(_ caso: String) throws {
-    let bytes = jsonEspeciais[caso] ?? SuiteJSON.bytes(caso)
-    var ed = Edicao(bytes, formato: .json)
-    #expect(ed.documento != nil)
-    #expect(try ed.resultado() == bytes)
-    // definir o mesmo valor de cada campo não muda nada
-    for e in ed.documento?.entradas ?? [] { try ed.definir(e.caminho, .valor(e.valor)) }
-    #expect(ed.alteracoes.isEmpty)
-    #expect(try ed.resultado() == bytes)
-    #expect(!ed.temAlteracoes)
+@Test(arguments: JSONSuite.y + Array(jsonSpecials.keys).sorted())
+func jsonNoChangeSameBytes(_ testCase: String) throws {
+    let bytes = jsonSpecials[testCase] ?? JSONSuite.bytes(testCase)
+    var ed = EditSession(bytes, format: .json)
+    #expect(ed.document != nil)
+    #expect(try ed.result() == bytes)
+    // setting each field to its current value changes nothing
+    for e in ed.document?.entries ?? [] { try ed.assign(e.path, .value(e.value)) }
+    #expect(ed.changes.isEmpty)
+    #expect(try ed.result() == bytes)
+    #expect(!ed.hasChanges)
 }
 
-/// Confere que só o intervalo do valor mudou: tudo antes e depois fica igual, byte a byte.
-private func soOTrechoMudouJSON(_ antes: [UInt8], _ depois: [UInt8], _ r: Range<Int>) -> Bool {
-    let sufixo = antes.count - r.upperBound
-    guard depois.count >= r.lowerBound + sufixo else { return false }
-    return depois.prefix(r.lowerBound).elementsEqual(antes.prefix(r.lowerBound))
-        && depois.suffix(sufixo).elementsEqual(antes.suffix(sufixo))
+/// Checks that only the value's range changed: everything before and after is identical, byte for byte.
+private func onlyTheHunkChangedJSON(_ before: [UInt8], _ after: [UInt8], _ r: Range<Int>) -> Bool {
+    let suffix = before.count - r.upperBound
+    guard after.count >= r.lowerBound + suffix else { return false }
+    return after.prefix(r.lowerBound).elementsEqual(before.prefix(r.lowerBound))
+        && after.suffix(suffix).elementsEqual(before.suffix(suffix))
 }
 
-@Test(arguments: SuiteJSON.y + Array(jsonEspeciais.keys).sorted())
-func jsonMudarCadaValor(_ caso: String) throws {
-    let bytes = jsonEspeciais[caso] ?? SuiteJSON.bytes(caso)
-    let doc = try LeitorJSON.ler(bytes)
-    for e in doc.entradas {
-        guard let novo = mutado(e.valor), Formato.json.problema(novo) == nil else { continue }
-        let saida = try Gravar.aplicar(doc, alteracoes: [e.caminho: .valor(novo)])
-        #expect(soOTrechoMudouJSON(bytes, saida, e.intervalo), "\(caso) \(e.caminho.texto)")
-        let relido = try LeitorJSON.ler(saida)
-        #expect(relido.valorRaiz.valor(em: e.caminho) == novo, "\(caso) \(e.caminho.texto)")
-        #expect(relido.usaExtensoesJSONC == doc.usaExtensoesJSONC, "\(caso): o dialeto não pode mudar")
-        #expect(relido.temBOM == doc.temBOM && relido.quebraDeLinha == doc.quebraDeLinha)
+@Test(arguments: JSONSuite.y + Array(jsonSpecials.keys).sorted())
+func jsonChangeEachValue(_ testCase: String) throws {
+    let bytes = jsonSpecials[testCase] ?? JSONSuite.bytes(testCase)
+    let doc = try JSONReader.parse(bytes)
+    for e in doc.entries {
+        guard let updated = mutated(e.value), Format.json.problem(updated) == nil else { continue }
+        let output = try Writer.apply(doc, changes: [e.path: .value(updated)])
+        #expect(onlyTheHunkChangedJSON(bytes, output, e.range), "\(testCase) \(e.path.text)")
+        let reparsed = try JSONReader.parse(output)
+        #expect(reparsed.rootValue.value(at: e.path) == updated, "\(testCase) \(e.path.text)")
+        #expect(reparsed.usesJSONCExtensions == doc.usesJSONCExtensions, "\(testCase): the dialect must not change")
+        #expect(reparsed.hasBOM == doc.hasBOM && reparsed.lineBreak == doc.lineBreak)
     }
 }
 
-// MARK: - tsconfig.json com comentários e vírgula final
+// MARK: - tsconfig.json with comments and trailing commas
 
-@Test func tsconfigLidoComComentarios() throws {
-    let doc = try LeitorJSON.ler(SuiteJSON.fixture("tsconfig.json"))
-    #expect(doc.usaExtensoesJSONC)
-    #expect(doc.nomeFormato == "JSONC")
-    #expect(throws: ErroLeitura.self) { try LeitorJSON.ler(SuiteJSON.fixture("tsconfig.json"), estrito: true) }
+@Test func tsconfigReadWithComments() throws {
+    let doc = try JSONReader.parse(JSONSuite.fixture("tsconfig.json"))
+    #expect(doc.usesJSONCExtensions)
+    #expect(doc.formatName == "JSONC")
+    #expect(throws: ParseError.self) { try JSONReader.parse(JSONSuite.fixture("tsconfig.json"), strict: true) }
 
-    let secoes = Campos.secoes(doc)
-    #expect(secoes.map(\.titulo) == ["Raiz", "compilerOptions", "compilerOptions.paths"])
-    #expect(secoes[0].campos.map(\.rotulo) == ["include", "exclude"])
-    #expect(secoes[1].ajuda == "Visit https://aka.ms/tsconfig to read more about this file")
-    #expect(secoes[2].campos.map(\.rotulo) == ["@/*", "~utils/*"])
+    let sections = Fields.sections(doc)
+    #expect(sections.map(\.title) == ["Root", "compilerOptions", "compilerOptions.paths"])
+    #expect(sections[0].fields.map(\.label) == ["include", "exclude"])
+    #expect(sections[1].help == "Visit https://aka.ms/tsconfig to read more about this file")
+    #expect(sections[2].fields.map(\.label) == ["@/*", "~utils/*"])
 
-    let campos = Dictionary(uniqueKeysWithValues: secoes.flatMap(\.campos).map { ($0.id, $0) })
-    let alvo = try #require(campos["compilerOptions.target"])
-    #expect(alvo.tipo == .escolha(["es2017", "es2020", "es2022", "esnext"]))
-    #expect(alvo.ajuda == "Language and Environment\nes2017 | es2020 | es2022 | esnext")
-    #expect(campos["compilerOptions.module"]?.ajuda == "Modules")
-    #expect(campos["compilerOptions.skipLibCheck"]?.ajuda == "acelera o build")
-    #expect(campos["compilerOptions.lib"]?.tipo == .lista(.texto))
-    #expect(campos["compilerOptions.strict"]?.tipo == .booleano)
-    #expect(campos["compilerOptions.maxNodeModuleJsDepth"]?.tipo == .inteiro)
-    #expect(campos["include"]?.linha == 30)
+    let fields = Dictionary(uniqueKeysWithValues: sections.flatMap(\.fields).map { ($0.id, $0) })
+    let target = try #require(fields["compilerOptions.target"])
+    #expect(target.kind == .choice(["es2017", "es2020", "es2022", "esnext"]))
+    #expect(target.help == "Language and Environment\nes2017 | es2020 | es2022 | esnext")
+    #expect(fields["compilerOptions.module"]?.help == "Modules")
+    #expect(fields["compilerOptions.skipLibCheck"]?.help == "speeds up the build")
+    #expect(fields["compilerOptions.lib"]?.kind == .array(.text))
+    #expect(fields["compilerOptions.strict"]?.kind == .boolean)
+    #expect(fields["compilerOptions.maxNodeModuleJsDepth"]?.kind == .integer)
+    #expect(fields["include"]?.line == 30)
 }
 
-@Test func tsconfigAlterarMudaSoOTrecho() throws {
-    let original = SuiteJSON.fixture("tsconfig.json")
-    var ed = Edicao(original, formato: .json)
-    try ed.definir(k("compilerOptions", "target"), .valor(.texto("esnext")))
-    try ed.definir(k("compilerOptions", "strict"), .valor(.booleano(false)))
-    try ed.definir(k("include"), .valor(.lista([.texto("src/**/*.ts"), .texto("src/**/*.tsx"), .texto("tests/**/*.ts")])))
-    try ed.definir(k("compilerOptions", "paths", "@/*"), .valor(.lista([.texto("./app/*")])))
-    let saida = try ed.resultado()
-    let esperado = s(original)
+@Test func tsconfigChangeTouchesOnlyHunk() throws {
+    let original = JSONSuite.fixture("tsconfig.json")
+    var ed = EditSession(original, format: .json)
+    try ed.assign(k("compilerOptions", "target"), .value(.text("esnext")))
+    try ed.assign(k("compilerOptions", "strict"), .value(.boolean(false)))
+    try ed.assign(k("include"), .value(.array([.text("src/**/*.ts"), .text("src/**/*.tsx"), .text("tests/**/*.ts")])))
+    try ed.assign(k("compilerOptions", "paths", "@/*"), .value(.array([.text("./app/*")])))
+    let output = try ed.result()
+    let expected = s(original)
         .replacingOccurrences(of: #""target": "es2022""#, with: #""target": "esnext""#)
         .replacingOccurrences(of: #""strict": true"#, with: #""strict": false"#)
         .replacingOccurrences(of: "    \"src/**/*.tsx\",\n", with: "    \"src/**/*.tsx\",\n    \"tests/**/*.ts\",\n")
         .replacingOccurrences(of: #""@/*": ["./src/*"]"#, with: #""@/*": ["./app/*"]"#)
-    #expect(s(saida) == esperado)
-    let difs = Diferenca.linhas(original, saida)
-    #expect(difs.count == 4)
-    // os comentários e as vírgulas finais continuam lá
-    #expect(s(saida).contains("// es2017 | es2020 | es2022 | esnext"))
-    #expect(s(saida).contains("\"skipLibCheck\": true, // acelera o build\n  },"))
+    #expect(s(output) == expected)
+    let diffList = Diff.lines(original, output)
+    #expect(diffList.count == 4)
+    // the comments and trailing commas are still there
+    #expect(s(output).contains("// es2017 | es2020 | es2022 | esnext"))
+    #expect(s(output).contains("\"skipLibCheck\": true, // speeds up the build\n  },"))
 }
 
-@Test func tsconfigDesfazerVoltaAoOriginal() throws {
-    let original = SuiteJSON.fixture("tsconfig.json")
-    var ed = Edicao(original, formato: .json)
-    try ed.definir(k("compilerOptions", "outDir"), .valor(.texto("./build")))
-    #expect(ed.temAlteracoes)
-    try ed.definir(k("compilerOptions", "outDir"), .valor(.texto("./dist")))
-    #expect(!ed.temAlteracoes)
-    #expect(try ed.resultado() == original)
+@Test func tsconfigUndoRestoresOriginal() throws {
+    let original = JSONSuite.fixture("tsconfig.json")
+    var ed = EditSession(original, format: .json)
+    try ed.assign(k("compilerOptions", "outDir"), .value(.text("./build")))
+    #expect(ed.hasChanges)
+    try ed.assign(k("compilerOptions", "outDir"), .value(.text("./dist")))
+    #expect(!ed.hasChanges)
+    #expect(try ed.result() == original)
 }
 
-// MARK: - Textos: aspas e escapes do original
+// MARK: - Strings: quotes and escapes from the original
 
-@Test func textoMantemEscapes() throws {
-    let t = #"{"url": "http:\/\/exemplo.com\/a", "nome": "José", "x": "Olá"}"#
-    #expect(try troca(t, k("url"), .texto("http://exemplo.com/b/c")) == #"{"url": "http:\/\/exemplo.com\/b\/c", "nome": "José", "x": "Olá"}"#)
-    #expect(try troca(t, k("nome"), .texto("José Ação")) == #"{"url": "http:\/\/exemplo.com\/a", "nome": "José Ação", "x": "Olá"}"#)
-    #expect(try troca(t, k("x"), .texto("Olá 😀")) == #"{"url": "http:\/\/exemplo.com\/a", "nome": "José", "x": "Olá 😀"}"#)
-    // texto sem pista de estilo, num arquivo que só tem ASCII e escapa o não-ASCII
-    #expect(try troca(#"{"a": "x", "b": "é"}"#, k("a"), .texto("ç")) == #"{"a": "ç", "b": "é"}"#)
-    // arquivo com acentos diretos: acentos diretos
-    #expect(try troca(#"{"a": "x", "b": "é"}"#, k("a"), .texto("ç")) == #"{"a": "ç", "b": "é"}"#)
-    // aspas, barra invertida, quebra e controle sempre escapados
-    #expect(try troca(#"{"a": ""}"#, k("a"), .texto("a\"b\\c\nd\u{1}")) == #"{"a": "a\"b\\c\nd\u0001"}"#)
-    // começo e fim iguais ficam como estavam, mesmo escritos de outro jeito
-    #expect(try troca(#"{"a": "ABC\tfim"}"#, k("a"), .texto("ABX\tfim")) == #"{"a": "ABX\tfim"}"#)
+@Test func stringKeepsEscapes() throws {
+    let t = #"{"url": "http:\/\/example.com\/a", "name": "José", "x": "Olá"}"#
+    #expect(try swap(t, k("url"), .text("http://example.com/b/c")) == #"{"url": "http:\/\/example.com\/b\/c", "name": "José", "x": "Olá"}"#)
+    #expect(try swap(t, k("name"), .text("José Ação")) == #"{"url": "http:\/\/example.com\/a", "name": "José Ação", "x": "Olá"}"#)
+    #expect(try swap(t, k("x"), .text("Olá 😀")) == #"{"url": "http:\/\/example.com\/a", "name": "José", "x": "Olá 😀"}"#)
+    // a string with no style hint, in a file that is ASCII-only and escapes non-ASCII
+    #expect(try swap(#"{"a": "x", "b": "é"}"#, k("a"), .text("ç")) == #"{"a": "ç", "b": "é"}"#)
+    // a file with literal accented characters: literal accented characters
+    #expect(try swap(#"{"a": "x", "b": "é"}"#, k("a"), .text("ç")) == #"{"a": "ç", "b": "é"}"#)
+    // quotes, backslash, line breaks and control characters are always escaped
+    #expect(try swap(#"{"a": ""}"#, k("a"), .text("a\"b\\c\nd\u{1}")) == #"{"a": "a\"b\\c\nd\u0001"}"#)
+    // an unchanged start and end stay as they were, even if written another way
+    #expect(try swap(#"{"a": "ABC\tend"}"#, k("a"), .text("ABX\tend")) == #"{"a": "ABX\tend"}"#)
 }
 
-@Test func numeroMantemForma() throws {
+@Test func numberKeepsShape() throws {
     let t = #"{"a": 1.50, "b": 1.5e3, "c": 2E+10, "d": -0.5, "e": 7, "f": 1e-7}"#
-    #expect(try troca(t, k("a"), .decimal(2.5)).contains(#""a": 2.50,"#))
-    #expect(try troca(t, k("a"), .decimal(0.125)).contains(#""a": 0.125,"#))
-    #expect(try troca(t, k("b"), .decimal(2000)).contains(#""b": 2.0e3,"#))
-    #expect(try troca(t, k("b"), .decimal(0.00025)).contains(#""b": 2.5e-4,"#))
-    #expect(try troca(t, k("c"), .decimal(3e12)).contains(#""c": 3E+12,"#))
-    #expect(try troca(t, k("d"), .decimal(3)).contains(#""d": 3.0,"#))
-    #expect(try troca(t, k("e"), .inteiro(-42)).contains(#""e": -42,"#))
-    #expect(try troca(t, k("f"), .decimal(2e-7)).contains(#""f": 2e-7}"#))
-    // decimal sempre continua decimal ao reler
-    #expect(FormatarJSON.decimal(1e21, estilo: "0.5") == "1e21")
-    #expect(FormatarJSON.decimal(100, estilo: nil) == "100.0")
-    #expect(FormatarJSON.decimal(-0.0, estilo: nil) == "-0.0")
-    // JSON não tem infinito nem NaN
-    #expect(throws: ErroGravar.self) { try troca(t, k("a"), .decimal(.infinity)) }
+    #expect(try swap(t, k("a"), .decimal(2.5)).contains(#""a": 2.50,"#))
+    #expect(try swap(t, k("a"), .decimal(0.125)).contains(#""a": 0.125,"#))
+    #expect(try swap(t, k("b"), .decimal(2000)).contains(#""b": 2.0e3,"#))
+    #expect(try swap(t, k("b"), .decimal(0.00025)).contains(#""b": 2.5e-4,"#))
+    #expect(try swap(t, k("c"), .decimal(3e12)).contains(#""c": 3E+12,"#))
+    #expect(try swap(t, k("d"), .decimal(3)).contains(#""d": 3.0,"#))
+    #expect(try swap(t, k("e"), .integer(-42)).contains(#""e": -42,"#))
+    #expect(try swap(t, k("f"), .decimal(2e-7)).contains(#""f": 2e-7}"#))
+    // a decimal always stays a decimal when read back
+    #expect(JSONFormat.decimal(1e21, style: "0.5") == "1e21")
+    #expect(JSONFormat.decimal(100, style: nil) == "100.0")
+    #expect(JSONFormat.decimal(-0.0, style: nil) == "-0.0")
+    // JSON has neither infinity nor NaN
+    #expect(throws: SaveError.self) { try swap(t, k("a"), .decimal(.infinity)) }
 }
 
-// MARK: - Estrutura
+// MARK: - Structure
 
-@Test func chaveRepetidaValeAUltima() throws {
+@Test func repeatedKeyLastWins() throws {
     let t = #"{"a": 1, "b": 2, "a": 3}"#
-    let doc = try LeitorJSON.ler(t)
-    #expect(doc.raiz["a"] == .inteiro(3))
-    #expect(doc.raiz.pares.map(\.chave) == ["a", "b"])
-    #expect(doc.entradas.map(\.caminho.texto) == ["b", "a"])
-    #expect(try troca(t, k("a"), .inteiro(9)) == #"{"a": 1, "b": 2, "a": 9}"#)
+    let doc = try JSONReader.parse(t)
+    #expect(doc.root["a"] == .integer(3))
+    #expect(doc.root.pairs.map(\.key) == ["a", "b"])
+    #expect(doc.entries.map(\.path.text) == ["b", "a"])
+    #expect(try swap(t, k("a"), .integer(9)) == #"{"a": 1, "b": 2, "a": 9}"#)
 }
 
-@Test func raizListaDeObjetosViraSecoes() throws {
-    let doc = try LeitorJSON.ler(jsonEspeciais["raiz-lista"]!)
-    let secoes = Campos.secoes(doc)
-    #expect(secoes.map(\.titulo) == ["a", "b"])
-    #expect(secoes.map(\.grupo) == ["(raiz)", "(raiz)"])
-    #expect(secoes[1].campos.map(\.caminho.texto) == ["[1].nome", "[1].n"])
-    #expect(s(try Gravar.aplicar(doc, alteracoes: [[.indice(1), .chave("n")]: .valor(.inteiro(5))]))
-            == "[\n  {\"nome\": \"a\", \"n\": 1},\n  {\"nome\": \"b\", \"n\": 5}\n]\n")
+@Test func rootArrayOfObjectsBecomesSections() throws {
+    let doc = try JSONReader.parse(jsonSpecials["root-array"]!)
+    let sections = Fields.sections(doc)
+    #expect(sections.map(\.title) == ["a", "b"])
+    #expect(sections.map(\.group) == ["(root)", "(root)"])
+    #expect(sections[1].fields.map(\.path.text) == ["[1].name", "[1].n"])
+    #expect(s(try Writer.apply(doc, changes: [[.index(1), .key("n")]: .value(.integer(5))]))
+            == "[\n  {\"name\": \"a\", \"n\": 1},\n  {\"name\": \"b\", \"n\": 5}\n]\n")
 }
 
-@Test func raizEscalarEditavel() throws {
-    let t = "  \"só um texto\"  \n"
-    #expect(try troca(t, [], .texto("outro")) == "  \"outro\"  \n")
-    let doc = try LeitorJSON.ler(t)
-    #expect(Campos.secoes(doc).first?.campos.map(\.rotulo) == ["(raiz)"])
+@Test func scalarRootIsEditable() throws {
+    let t = "  \"just some text\"  \n"
+    #expect(try swap(t, [], .text("other")) == "  \"other\"  \n")
+    let doc = try JSONReader.parse(t)
+    #expect(Fields.sections(doc).first?.fields.map(\.label) == ["(root)"])
 }
 
-@Test func nuloECruEmJSON() throws {
+@Test func nullAndRawInJSON() throws {
     let t = "{\n  \"a\": null,\n  \"b\": [1, \"x\"]\n}\n"
-    var ed = Edicao(b(t), formato: .json)
-    let doc = try #require(ed.documento)
-    #expect(Campos.tipo(doc.entrada(k("a"))!) == .cru)
-    #expect(Campos.tipo(doc.entrada(k("b"))!) == .cru)
-    try ed.definir(k("a"), .cru(#"{"x": 1}"#))
-    try ed.definir(k("b"), .cru("[\n    2\n  ]"))
-    #expect(s(try ed.resultado()) == "{\n  \"a\": {\"x\": 1},\n  \"b\": [\n    2\n  ]\n}\n")
-    #expect(throws: ErroGravar.self) { try ed.definir(k("a"), .cru("{x: 1}")) }
+    var ed = EditSession(b(t), format: .json)
+    let doc = try #require(ed.document)
+    #expect(Fields.kind(doc.entry(k("a"))!) == .raw)
+    #expect(Fields.kind(doc.entry(k("b"))!) == .raw)
+    try ed.assign(k("a"), .raw(#"{"x": 1}"#))
+    try ed.assign(k("b"), .raw("[\n    2\n  ]"))
+    #expect(s(try ed.result()) == "{\n  \"a\": {\"x\": 1},\n  \"b\": [\n    2\n  ]\n}\n")
+    #expect(throws: SaveError.self) { try ed.assign(k("a"), .raw("{x: 1}")) }
 }
 
-@Test func jsonPuroContinuaPuro() throws {
+@Test func pureJSONStaysPure() throws {
     let t = "{\n  \"a\": [1, 2]\n}\n"
-    // valor cru com comentário tornaria o arquivo JSONC: recusado na gravação
-    #expect(throws: ErroGravar.self) {
-        try Gravar.aplicar(b(t), alteracoes: [k("a"): .cru("[1, 2, /* três */ 3]")], formato: .json)
+    // a raw value with a comment would turn the file into JSONC: rejected on save
+    #expect(throws: SaveError.self) {
+        try Writer.apply(b(t), changes: [k("a"): .raw("[1, 2, /* three */ 3]")], format: .json)
     }
-    // já JSONC: pode
+    // already JSONC: allowed
     let c = "{\n  // c\n  \"a\": [1, 2]\n}\n"
-    #expect(s(try Gravar.aplicar(b(c), alteracoes: [k("a"): .cru("[1, /* x */ 3]")], formato: .json))
+    #expect(s(try Writer.apply(b(c), changes: [k("a"): .raw("[1, /* x */ 3]")], format: .json))
             == "{\n  // c\n  \"a\": [1, /* x */ 3]\n}\n")
 }
 
-@Test func listaDeVariasLinhasJSONC() throws {
-    let t = "{\n  \"l\": [\n    1, // um\n    2,\n  ],\n}\n"
-    // mesma quantidade de itens: só o item muda, o comentário fica
-    #expect(try troca(t, k("l"), .lista([.inteiro(1), .inteiro(5)])) == "{\n  \"l\": [\n    1, // um\n    5,\n  ],\n}\n")
-    // mais itens: reescrita com o recuo do primeiro e a vírgula final
-    #expect(try troca(t, k("l"), .lista([.inteiro(1), .inteiro(2), .inteiro(3)]))
+@Test func multiLineArrayJSONC() throws {
+    let t = "{\n  \"l\": [\n    1, // one\n    2,\n  ],\n}\n"
+    // same number of items: only the item changes, the comment stays
+    #expect(try swap(t, k("l"), .array([.integer(1), .integer(5)])) == "{\n  \"l\": [\n    1, // one\n    5,\n  ],\n}\n")
+    // more items: rewritten with the first item's indentation and the trailing comma
+    #expect(try swap(t, k("l"), .array([.integer(1), .integer(2), .integer(3)]))
             == "{\n  \"l\": [\n    1,\n    2,\n    3,\n  ],\n}\n")
-    // sem vírgula final no original: nenhuma é acrescentada
+    // no trailing comma in the original: none is added
     let p = "{\n  \"l\": [\n    1,\n    2\n  ]\n}\n"
-    #expect(try troca(p, k("l"), .lista([.inteiro(1)])) == "{\n  \"l\": [\n    1\n  ]\n}\n")
+    #expect(try swap(p, k("l"), .array([.integer(1)])) == "{\n  \"l\": [\n    1\n  ]\n}\n")
 }
 
-@Test func comentarioDeBlocoComoAjudaEEscolha() throws {
+@Test func blockCommentAsHelpAndChoice() throws {
     let t = """
     {
-      /* Nível de log
-       * debug | info | erro
+      /* Log level
+       * debug | info | error
        */
       "log": "info",
 
-      // separado por linha em branco: não é ajuda de "b"
+      // separated by a blank line: not the help of "b"
 
       "b": 1
     }
     """
-    let doc = try LeitorJSON.ler(t)
-    let e = try #require(doc.entrada(k("log")))
-    #expect(e.comentarioAcima == ["Nível de log", "debug | info | erro"])
-    #expect(Campos.tipo(e) == .escolha(["debug", "info", "erro"]))
-    #expect(doc.entrada(k("b"))?.comentarioAcima == [])
+    let doc = try JSONReader.parse(t)
+    let e = try #require(doc.entry(k("log")))
+    #expect(e.commentAbove == ["Log level", "debug | info | error"])
+    #expect(Fields.kind(e) == .choice(["debug", "info", "error"]))
+    #expect(doc.entry(k("b"))?.commentAbove == [])
 }
 
-@Test func errosComLinhaEColuna() {
+@Test func errorsWithLineAndColumn() {
     do {
-        _ = try LeitorJSON.ler("{\n  \"a\": 1,\n  \"b\" 2\n}")
-        Issue.record("deveria recusar")
+        _ = try JSONReader.parse("{\n  \"a\": 1,\n  \"b\" 2\n}")
+        Issue.record("should have been rejected")
     } catch {
-        #expect(error.linha == 3 && error.coluna == 7)
-        #expect(error.formato == .json)
-        #expect(error.localizedDescription.hasPrefix("JSON inválido"))
+        #expect(error.line == 3 && error.column == 7)
+        #expect(error.format == .json)
+        #expect(error.localizedDescription.hasPrefix("invalid JSON"))
     }
-    #expect(throws: ErroLeitura.self) { try LeitorJSON.ler("{\"a\": 1,}", estrito: true) }
-    #expect(throws: ErroLeitura.self) { try LeitorJSON.ler("{'a': 1}") }
-    #expect(throws: ErroLeitura.self) { try LeitorJSON.ler("/* sem fim") }
-    #expect(throws: ErroLeitura.self) { try LeitorJSON.ler("") }
+    #expect(throws: ParseError.self) { try JSONReader.parse("{\"a\": 1,}", strict: true) }
+    #expect(throws: ParseError.self) { try JSONReader.parse("{'a': 1}") }
+    #expect(throws: ParseError.self) { try JSONReader.parse("/* no end") }
+    #expect(throws: ParseError.self) { try JSONReader.parse("") }
 }
 
-@Test func edicaoTrocarTextoJSON() throws {
-    var ed = Edicao(b("{\"a\": 1}"), formato: .json)
-    #expect(throws: ErroLeitura.self) { try ed.trocarTexto(b("{\"a\": }")) }
-    try ed.trocarTexto(b("{\"a\": 2, \"b\": true}"))
-    #expect(ed.valor(k("b")) == .booleano(true))
-    #expect(ed.temAlteracoes)
+@Test func sessionReplaceTextJSON() throws {
+    var ed = EditSession(b("{\"a\": 1}"), format: .json)
+    #expect(throws: ParseError.self) { try ed.replaceText(b("{\"a\": }")) }
+    try ed.replaceText(b("{\"a\": 2, \"b\": true}"))
+    #expect(ed.value(k("b")) == .boolean(true))
+    #expect(ed.hasChanges)
 }
 
-@Test func formatoPelaExtensao() {
-    #expect(Formato(extensao: "json") == .json)
-    #expect(Formato(extensao: "JSONC") == .json)
-    #expect(Formato(extensao: "toml") == .toml)
-    #expect(Formato(extensao: "yaml") == .yaml)
-    #expect(Formato(extensao: "xml") == nil)
+@Test func formatFromExtension() {
+    #expect(Format(fileExtension: "json") == .json)
+    #expect(Format(fileExtension: "JSONC") == .json)
+    #expect(Format(fileExtension: "toml") == .toml)
+    #expect(Format(fileExtension: "yaml") == .yaml)
+    #expect(Format(fileExtension: "xml") == nil)
 }
 
-// MARK: - exemplos/config.jsonc
+// MARK: - examples/config.jsonc
 
-@Test func exemploJSONC() throws {
-    let raiz = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+@Test func exampleJSONC() throws {
+    let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent()
-    let original = Array(try Data(contentsOf: raiz.appendingPathComponent("exemplos/config.jsonc")))
-    let doc = try LeitorJSON.ler(original)
-    let secoes = Campos.secoes(doc)
-    #expect(secoes.map(\.titulo) == ["Raiz", "servidor", "banco", "backup", "tarefas[0].ambiente", "limpar-logs"])
-    #expect(secoes.map(\.id) == ["raiz", "servidor", "banco", "tarefas[0]", "tarefas[0].ambiente", "tarefas[1]"])
-    let campos = Dictionary(uniqueKeysWithValues: secoes.flatMap(\.campos).map { ($0.id, $0) })
-    #expect(campos["servidor.nivel_log"]?.tipo == .escolha(["debug", "info", "aviso", "erro"]))
-    #expect(campos["banco.driver"]?.tipo == .escolha(["firebird", "postgres"]))
-    #expect(campos["banco.fator"]?.tipo == .decimal)
-    #expect(campos["banco.senha_arquivo"]?.tipo == .cru)
-    #expect(campos["titulo"]?.ajuda == "Nome que aparece no topo")
+    let original = Array(try Data(contentsOf: root.appendingPathComponent("examples/config.jsonc")))
+    let doc = try JSONReader.parse(original)
+    let sections = Fields.sections(doc)
+    #expect(sections.map(\.title) == ["Root", "server", "database", "backup", "tasks[0].environment", "clean-logs"])
+    #expect(sections.map(\.id) == [FormSection.rootID, "server", "database", "tasks[0]", "tasks[0].environment", "tasks[1]"])
+    let fields = Dictionary(uniqueKeysWithValues: sections.flatMap(\.fields).map { ($0.id, $0) })
+    #expect(fields["server.log_level"]?.kind == .choice(["debug", "info", "warning", "error"]))
+    #expect(fields["database.driver"]?.kind == .choice(["firebird", "postgres"]))
+    #expect(fields["database.factor"]?.kind == .decimal)
+    #expect(fields["database.password_file"]?.kind == .raw)
+    #expect(fields["title"]?.help == "Name shown at the top")
 
-    var ed = Edicao(original, formato: .json)
-    try ed.definir(k("banco", "pool"), .valor(.inteiro(20)))
-    try ed.definir(k("banco", "fator"), .valor(.decimal(2.25)))
-    try ed.definir([.chave("tarefas"), .indice(0), .chave("ambiente"), .chave("DESTINO")], .valor(.texto("/srv/backup")))
-    let r = s(try ed.resultado())
+    var ed = EditSession(original, format: .json)
+    try ed.assign(k("database", "pool"), .value(.integer(20)))
+    try ed.assign(k("database", "factor"), .value(.decimal(2.25)))
+    try ed.assign([.key("tasks"), .index(0), .key("environment"), .key("DESTINATION")], .value(.text("/srv/backup")))
+    let r = s(try ed.result())
     #expect(r == s(original).replacingOccurrences(of: "\"pool\": 12,", with: "\"pool\": 20,")
-        .replacingOccurrences(of: "\"fator\": 1.50,", with: "\"fator\": 2.25,")
+        .replacingOccurrences(of: "\"factor\": 1.50,", with: "\"factor\": 2.25,")
         .replacingOccurrences(of: #""\/mnt\/backup""#, with: #""\/srv\/backup""#))
 }

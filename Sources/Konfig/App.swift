@@ -1,54 +1,54 @@
 import AppKit
 import ConfCore
 
-/// Ponto de entrada: app de documentos AppKit, menu montado em código (sem nib).
+/// Entry point: AppKit document app, menu built in code (no nib).
 @main
 @MainActor
 enum App {
-    static let delegado = Delegado()
+    static let delegate = AppDelegate()
 
     static func main() {
-        Migracao.preferenciasDoNomeAntigo()
-        // O primeiro NSDocumentController criado vira o `shared`.
-        _ = ControladorDocumentos()
+        Migration.preferencesFromOldName()
+        // The first NSDocumentController created becomes `shared`.
+        _ = DocumentController()
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
-        app.delegate = delegado
-        app.mainMenu = Menu.principal()
+        app.delegate = delegate
+        app.mainMenu = Menu.mainMenu()
         app.run()
     }
 }
 
-/// Até 11/10/2026 o app se chamava km-conf, com o bundle id `br.com.kogut.km-conf`. As
-/// preferências ficam guardadas pelo bundle id; na primeira abertura com o id novo, copia as
-/// do antigo (posição e tamanho da janela, última pasta do painel de abrir…). O domínio antigo
-/// fica como está. Os documentos recentes e o "Abrir com" do Finder não passam: o sistema os
-/// guarda por bundle id, fora das preferências.
-enum Migracao {
-    static let idAntigo = "br.com.kogut.km-conf"
-    static let janelaAntiga = "NSWindow Frame km-conf.janela"
-    static let janelaNova = "NSWindow Frame konfig.janela"
+/// Until 2026-10-11 the app was called km-conf, with bundle id `br.com.kogut.km-conf`.
+/// Preferences are stored by bundle id; on the first launch with the new id, copy the ones
+/// from the old one (window position and size, last folder of the open panel…). The old domain
+/// is left as is. Recent documents and Finder's "Open With" don't carry over: the system
+/// stores them by bundle id, outside the preferences.
+enum Migration {
+    static let oldID = "br.com.kogut.km-conf"
+    static let oldWindow = "NSWindow Frame km-conf.janela"
+    static let newWindow = "NSWindow Frame konfig.janela"
 
-    static func preferenciasDoNomeAntigo() {
-        let padrao = UserDefaults.standard
-        let marca = "migrouDoNomeAntigo"
-        guard !padrao.bool(forKey: marca) else { return }
-        defer { padrao.set(true, forKey: marca) }
-        guard let antigas = padrao.persistentDomain(forName: idAntigo) else { return }
-        for (chave, valor) in antigas {
-            let nova = chave == janelaAntiga ? janelaNova : chave
-            if padrao.object(forKey: nova) == nil { padrao.set(valor, forKey: nova) }
+    static func preferencesFromOldName() {
+        let defaults = UserDefaults.standard
+        let mark = "migrouDoNomeAntigo"
+        guard !defaults.bool(forKey: mark) else { return }
+        defer { defaults.set(true, forKey: mark) }
+        guard let oldPrefs = defaults.persistentDomain(forName: oldID) else { return }
+        for (key, value) in oldPrefs {
+            let newKey = key == oldWindow ? newWindow : key
+            if defaults.object(forKey: newKey) == nil { defaults.set(value, forKey: newKey) }
         }
     }
 }
 
-/// Decide o tipo do arquivo pelo nome. O macOS não declara `.jsonc`, `.json5`, `.env` nem `.ini` (dá a eles
-/// um tipo "dinâmico", e a um arquivo chamado só `.env`, `public.data`), e a declaração
-/// do `Info.plist` só vale depois que o app é registrado.
-final class ControladorDocumentos: NSDocumentController {
+/// Decides the file's type by its name. macOS doesn't declare `.jsonc`, `.json5`, `.env` or `.ini` (it gives them
+/// a "dynamic" type, and a file named just `.env` gets `public.data`), and the `Info.plist`
+/// declaration only takes effect after the app is registered.
+final class DocumentController: NSDocumentController {
     override func typeForContents(of url: URL) throws -> String {
         if url.pathExtension.lowercased() == "jsonc" { return "br.com.kogut.konfig.jsonc" }
-        switch Formato(nomeArquivo: url.lastPathComponent) {
+        switch Format(fileName: url.lastPathComponent) {
         case .toml?: return "public.toml"
         case .json?: return "public.json"
         case .json5?: return "br.com.kogut.konfig.json5"
@@ -59,35 +59,35 @@ final class ControladorDocumentos: NSDocumentController {
         }
     }
 
-    /// O painel de abrir aceita qualquer arquivo: `.env` e `.env.local` não têm um tipo
-    /// que o painel reconheça. Quem decide se dá para abrir é `typeForContents`.
+    /// The open panel accepts any file: `.env` and `.env.local` have no type
+    /// the panel recognizes. `typeForContents` decides whether it can be opened.
     override func beginOpenPanel(_ openPanel: NSOpenPanel, forTypes inTypes: [String]?,
                                  completionHandler: @escaping (Int) -> Void) {
         super.beginOpenPanel(openPanel, forTypes: nil, completionHandler: completionHandler)
     }
 }
 
-extension Formato {
-    /// Formato pelo tipo de documento do `Info.plist` (último recurso, sem nome de arquivo).
-    init(tipo: String) {
-        let t = tipo.lowercased()
+extension Format {
+    /// Format from the `Info.plist` document type (last resort, without a file name).
+    init(kind: String) {
+        let t = kind.lowercased()
         if t.contains("json5") { self = .json5 } else if t.contains("json") { self = .json } else if t.hasSuffix(".env") { self = .env } else if t.hasSuffix(".ini") { self = .ini } else if t.contains("yaml") { self = .yaml } else { self = .toml }
     }
 }
 
 @MainActor
-final class Delegado: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
-        // Caminhos passados na linha de comando (`open Konfig.app --args arquivo.toml`)
-        // o próprio AppKit abre como documentos.
-        if let v = ProcessInfo.processInfo.environment["KONFIG_AUTOTESTE"] {
-            let partes = v.split(separator: "|").map(String.init)
-            if partes.count == 2 {
-                Autoteste.rodar(arquivo: URL(fileURLWithPath: partes[0]), saida: URL(fileURLWithPath: partes[1]))
+        // Paths passed on the command line (`open Konfig.app --args file.toml`)
+        // are opened as documents by AppKit itself.
+        if let v = ProcessInfo.processInfo.environment["KONFIG_SELFTEST"] {
+            let parts = v.split(separator: "|").map(String.init)
+            if parts.count == 2 {
+                SelfTest.run(file: URL(fileURLWithPath: parts[0]), output: URL(fileURLWithPath: parts[1]))
                 return
             }
         }
-        // Aberto sem arquivo: mostra o painel de abrir.
+        // Launched without a file: show the open panel.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             if NSDocumentController.shared.documents.isEmpty {
                 NSDocumentController.shared.openDocument(nil)
@@ -105,90 +105,90 @@ final class Delegado: NSObject, NSApplicationDelegate {
 
 @MainActor
 enum Menu {
-    static func item(_ titulo: String, _ acao: Selector?, _ tecla: String = "",
+    static func item(_ title: String, _ action: Selector?, _ keyEq: String = "",
                      _ mods: NSEvent.ModifierFlags = .command) -> NSMenuItem {
-        let i = NSMenuItem(title: titulo, action: acao, keyEquivalent: tecla)
+        let i = NSMenuItem(title: title, action: action, keyEquivalent: keyEq)
         i.keyEquivalentModifierMask = mods
         return i
     }
 
-    static func submenu(_ titulo: String, _ itens: [NSMenuItem]) -> NSMenuItem {
-        let m = NSMenu(title: titulo)
-        itens.forEach(m.addItem)
-        let i = NSMenuItem(title: titulo, action: nil, keyEquivalent: "")
+    static func submenu(_ title: String, _ items: [NSMenuItem]) -> NSMenuItem {
+        let m = NSMenu(title: title)
+        items.forEach(m.addItem)
+        let i = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         i.submenu = m
         return i
     }
 
-    static func principal() -> NSMenu {
-        let principal = NSMenu()
-        let nome = "Konfig"
+    static func mainMenu() -> NSMenu {
+        let main = NSMenu()
+        let name = "Konfig"
 
-        principal.addItem(submenu(nome, [
-            item("Sobre o \(nome)", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+        main.addItem(submenu(name, [
+            item(String(format: NSLocalizedString("About %@", comment: "Menu item; %@ = app name"), name), #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
             .separator(),
-            item("Ocultar \(nome)", #selector(NSApplication.hide(_:)), "h"),
-            item("Ocultar Outros", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]),
-            item("Mostrar Tudo", #selector(NSApplication.unhideAllApplications(_:))),
+            item(String(format: NSLocalizedString("Hide %@", comment: "Menu item; %@ = app name"), name), #selector(NSApplication.hide(_:)), "h"),
+            item(NSLocalizedString("Hide Others", comment: "Menu item"), #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]),
+            item(NSLocalizedString("Show All", comment: "Menu item"), #selector(NSApplication.unhideAllApplications(_:))),
             .separator(),
-            item("Encerrar \(nome)", #selector(NSApplication.terminate(_:)), "q"),
+            item(String(format: NSLocalizedString("Quit %@", comment: "Menu item; %@ = app name"), name), #selector(NSApplication.terminate(_:)), "q"),
         ]))
 
-        let recentes = submenu("Abrir Recente", [
-            item("Limpar Menu", #selector(NSDocumentController.clearRecentDocuments(_:))),
+        let recents = submenu(NSLocalizedString("Open Recent", comment: "Menu item"), [
+            item(NSLocalizedString("Clear Menu", comment: "Menu item"), #selector(NSDocumentController.clearRecentDocuments(_:))),
         ])
-        principal.addItem(submenu("Arquivo", [
-            item("Novo", #selector(NSDocumentController.newDocument(_:)), "n"),
-            item("Abrir…", #selector(NSDocumentController.openDocument(_:)), "o"),
-            recentes,
+        main.addItem(submenu(NSLocalizedString("File", comment: "Menu title"), [
+            item(NSLocalizedString("New", comment: "Menu item"), #selector(NSDocumentController.newDocument(_:)), "n"),
+            item(NSLocalizedString("Open…", comment: "Menu item"), #selector(NSDocumentController.openDocument(_:)), "o"),
+            recents,
             .separator(),
-            item("Fechar", #selector(NSWindow.performClose(_:)), "w"),
-            item("Salvar", #selector(NSDocument.save(_:)), "s"),
-            item("Duplicar", #selector(NSDocument.duplicate(_:)), "s", [.command, .shift]),
-            item("Renomear…", #selector(NSDocument.rename(_:))),
-            item("Mover Para…", #selector(NSDocument.move(_:))),
-            item("Reverter Para", #selector(NSDocument.revertToSaved(_:))),
+            item(NSLocalizedString("Close", comment: "Menu item"), #selector(NSWindow.performClose(_:)), "w"),
+            item(NSLocalizedString("Save", comment: "Menu item"), #selector(NSDocument.save(_:)), "s"),
+            item(NSLocalizedString("Duplicate", comment: "Menu item"), #selector(NSDocument.duplicate(_:)), "s", [.command, .shift]),
+            item(NSLocalizedString("Rename…", comment: "Menu item"), #selector(NSDocument.rename(_:))),
+            item(NSLocalizedString("Move To…", comment: "Menu item"), #selector(NSDocument.move(_:))),
+            item(NSLocalizedString("Revert To", comment: "Menu item"), #selector(NSDocument.revertToSaved(_:))),
         ]))
 
-        principal.addItem(submenu("Editar", [
-            item("Desfazer", Selector(("undo:")), "z"),
-            item("Refazer", Selector(("redo:")), "z", [.command, .shift]),
+        main.addItem(submenu(NSLocalizedString("Edit", comment: "Menu title"), [
+            item(NSLocalizedString("Undo", comment: "Menu item"), Selector(("undo:")), "z"),
+            item(NSLocalizedString("Redo", comment: "Menu item"), Selector(("redo:")), "z", [.command, .shift]),
             .separator(),
-            item("Recortar", #selector(NSText.cut(_:)), "x"),
-            item("Copiar", #selector(NSText.copy(_:)), "c"),
-            item("Colar", #selector(NSText.paste(_:)), "v"),
-            item("Selecionar Tudo", #selector(NSText.selectAll(_:)), "a"),
+            item(NSLocalizedString("Cut", comment: "Menu item"), #selector(NSText.cut(_:)), "x"),
+            item(NSLocalizedString("Copy", comment: "Menu item"), #selector(NSText.copy(_:)), "c"),
+            item(NSLocalizedString("Paste", comment: "Menu item"), #selector(NSText.paste(_:)), "v"),
+            item(NSLocalizedString("Select All", comment: "Menu item"), #selector(NSText.selectAll(_:)), "a"),
             .separator(),
-            submenu("Buscar", [
+            submenu(NSLocalizedString("Find", comment: "Menu title (submenu of Edit)"), [
                 {
-                    let i = item("Buscar…", #selector(NSTextView.performFindPanelAction(_:)), "f")
+                    let i = item(NSLocalizedString("Find…", comment: "Menu item"), #selector(NSTextView.performFindPanelAction(_:)), "f")
                     i.tag = Int(NSFindPanelAction.showFindPanel.rawValue)
                     return i
                 }(),
                 {
-                    let i = item("Buscar Próximo", #selector(NSTextView.performFindPanelAction(_:)), "g")
+                    let i = item(NSLocalizedString("Find Next", comment: "Menu item"), #selector(NSTextView.performFindPanelAction(_:)), "g")
                     i.tag = Int(NSFindPanelAction.next.rawValue)
                     return i
                 }(),
             ]),
         ]))
 
-        principal.addItem(submenu("Visualizar", [
-            item("Formulário", #selector(Documento.mostrarFormulario(_:)), "1"),
-            item("Texto", #selector(Documento.mostrarTexto(_:)), "2"),
+        main.addItem(submenu(NSLocalizedString("View", comment: "Menu title"), [
+            item(NSLocalizedString("Form", comment: "Menu item (View); Form mode"), #selector(Document.showForm(_:)), "1"),
+            item(NSLocalizedString("Text", comment: "Menu item (View); Text mode"), #selector(Document.showText(_:)), "2"),
             .separator(),
-            item("Mostrar Barra Lateral", #selector(NSSplitViewController.toggleSidebar(_:)), "s", [.command, .control]),
-            item("Ocultar alterações", #selector(Documento.alternarAlteracoes(_:)), "i", [.command, .option]),
+            item(NSLocalizedString("Show Sidebar", comment: "Menu item"), #selector(NSSplitViewController.toggleSidebar(_:)), "s", [.command, .control]),
+            item(NSLocalizedString("Hide Changes", comment: "Menu item (View); toggles the changes panel"), #selector(Document.toggleChanges(_:)), "i", [.command, .option]),
         ]))
 
-        let janela = submenu("Janela", [
-            item("Minimizar", #selector(NSWindow.performMiniaturize(_:)), "m"),
-            item("Zoom", #selector(NSWindow.performZoom(_:))),
+        let window = submenu(NSLocalizedString("Window", comment: "Menu title"), [
+            item(NSLocalizedString("Minimize", comment: "Menu item"), #selector(NSWindow.performMiniaturize(_:)), "m"),
+            item(NSLocalizedString("Zoom", comment: "Menu item"), #selector(NSWindow.performZoom(_:))),
             .separator(),
-            item("Trazer Todas para a Frente", #selector(NSApplication.arrangeInFront(_:))),
+            item(NSLocalizedString("Bring All to Front", comment: "Menu item"), #selector(NSApplication.arrangeInFront(_:))),
         ])
-        principal.addItem(janela)
-        NSApp.windowsMenu = janela.submenu
-        return principal
+        main.addItem(window)
+        NSApp.windowsMenu = window.submenu
+        return main
     }
 }

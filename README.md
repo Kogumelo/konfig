@@ -1,663 +1,729 @@
 # Konfig
 
-<img src="icone/konfig.svg" width="128" alt="Ícone do Konfig: interruptor ligado com a letra K">
+**English** · [Português](README.pt-BR.md)
 
-Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
-(JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`),
-**JSON5** (chaves sem aspas, aspas simples, hexadecimal, `Infinity`…), **.env**
-(variáveis de ambiente `CHAVE=valor`), **INI** (`php.ini`, `.editorconfig`, `desktop.ini`…) e **YAML**
-(o subconjunto dos arquivos de configuração: docker-compose, GitHub Actions, Kubernetes, `pubspec.yaml`, OpenAPI).
-Abre o arquivo pelo Finder (duplo clique ou "Abrir com"), mostra cada valor num
-campo do tipo certo e, ao salvar, troca no arquivo **só os trechos dos valores
-alterados**: comentários, ordem, espaços, aspas, escapes, forma dos números, CRLF
-e BOM ficam exatamente como estavam.
+<img src="icon/konfig.svg" width="128" alt="Konfig icon: a switch turned on with the letter K">
 
-Swift/AppKit + SwiftUI, sem dependências. Os leitores são próprios (precisam saber
-a posição de cada valor no texto): o de TOML 1.0 passa na suíte oficial
-[toml-test](https://github.com/toml-lang/toml-test); o de JSON passa na
-[JSONTestSuite](https://github.com/nst/JSONTestSuite) (todos os `y_` aceitos, todos
-os `n_` recusados; os `i_` estão em [Limitações](#json-jsonc-e-json5)); o de JSON5
-passa na suíte oficial [json5-tests](https://github.com/json5/json5-tests) (os 83
-casos válidos aceitos e os 31 inválidos recusados, nenhum deixado de fora). O JSONC
-não tem suíte oficial: há arquivos próprios em `Tests/ConfCoreTests/Fixtures/jsonc/`.
-O de `.env` segue as regras do `dotenv` (Node/Ruby), escritas em [Regras do .env](#regras-do-env).
-O INI não tem norma: o Konfig aceita um dialeto fixo, descrito em [Dialeto INI](#dialeto-ini) e
-testado com arquivos próprios, com `.editorconfig` do projeto EditorConfig e com um trecho do
-`php.ini-production` do PHP (`Tests/ConfCoreTests/Fixtures/ini/`).
-O de YAML é testado com a suíte oficial [yaml-test-suite](https://github.com/yaml/yaml-test-suite)
-(os 192 casos dentro do [subconjunto aceito](#yaml) lidos com os valores esperados, os 94 casos
-inválidos recusados e os 116 que usam o que fica de fora recusados ou lidos sem diferença).
+A native Mac editor for configuration files: **TOML**, **JSON**, **JSONC**
+(JSON with comments and trailing commas, as in `tsconfig.json` and `.vscode/settings.json`),
+**JSON5** (unquoted keys, single quotes, hexadecimal, `Infinity`…), **.env**
+(`KEY=value` environment variables), **INI** (`php.ini`, `.editorconfig`, `desktop.ini`…) and **YAML**
+(the subset used by configuration files: docker-compose, GitHub Actions, Kubernetes, `pubspec.yaml`, OpenAPI).
+It opens the file from the Finder (double-click or "Open With"), shows each value in a
+field of the right type and, on save, replaces **only the bytes of the values that
+changed**: comments, order, whitespace, quotes, escapes, number style, CRLF
+and BOM stay exactly as they were.
 
-Parte da família de ferramentas da Kogumelo, que têm nome próprio começando por K
-(ver também a Katraca). Chamava-se `km-toml` e depois `km-conf`: o primeiro nome mudou
-porque o plano é editar vários formatos; o segundo, em 11/10/2026, quando as ferramentas
-trocaram o prefixo `km-` pela inicial K. Hoje: TOML, JSON,
-JSONC, JSON5, .env, INI e YAML (ver [Próximos formatos](#próximos-formatos)).
+Swift/AppKit + SwiftUI, no dependencies. The parsers are its own (they need to know
+where each value sits in the text): the TOML 1.0 parser passes the official
+[toml-test](https://github.com/toml-lang/toml-test) suite; the JSON parser passes the
+[JSONTestSuite](https://github.com/nst/JSONTestSuite) (every `y_` accepted, every
+`n_` rejected; the `i_` cases are under [Limitations](#json-jsonc-and-json5)); the JSON5
+parser passes the official [json5-tests](https://github.com/json5/json5-tests) suite (all 83
+valid cases accepted and all 31 invalid ones rejected, none skipped). JSONC has no
+official suite: there are hand-written files in `Tests/ConfCoreTests/Fixtures/jsonc/`.
+The `.env` parser follows the rules of `dotenv` (Node/Ruby), spelled out in [.env rules](#env-rules).
+INI has no standard: Konfig accepts one fixed dialect, described in [INI dialect](#ini-dialect) and
+tested with hand-written files, with `.editorconfig` files from the EditorConfig project and with an
+excerpt of PHP's `php.ini-production` (`Tests/ConfCoreTests/Fixtures/ini/`).
+The YAML parser is tested against the official [yaml-test-suite](https://github.com/yaml/yaml-test-suite)
+(the 192 cases inside the [accepted subset](#yaml) read with the expected values, the 94 invalid
+cases rejected, and the 116 that use what is left out either rejected or read without differences).
 
-## Compilar
+Part of Kogumelo's family of tools, whose names start with K
+(see also Katraca). It used to be called `km-toml` and then `km-conf`: the first name changed
+because the plan was to edit several formats; the second, on 2026-10-11, when the tools
+swapped the `km-` prefix for the initial K. Today: TOML, JSON,
+JSONC, JSON5, .env, INI and YAML (see [Next formats](#next-formats)).
+
+Code, comments and identifiers are in English; the user interface is in English and
+Portuguese (see [Localization](#localization)).
+
+## Building
 
 ```sh
 ./build.sh
 ```
 
-Gera `Konfig.app` nesta pasta, assinado localmente (`codesign --sign -`).
-Precisa do Xcode (Swift 6) e roda no macOS 14 ou mais novo. O build em release
-demora alguns minutos.
+Produces `Konfig.app` in this folder, signed locally (`codesign --sign -`).
+Requires Xcode (Swift 6) and runs on macOS 14 or later. The release build
+takes a few minutes.
 
-O ícone vem pronto em `icone/Konfig.icns`; o desenho de origem é `icone/konfig.svg`.
-Depois de mudar o desenho, refaça o `.icns` com `./icone/gerar.sh`.
+The icon ships ready-made in `icon/Konfig.icns`; the source drawing is `icon/konfig.svg`.
+After changing the drawing, regenerate the `.icns` with `./icon/make-icon.sh`.
 
-Testes do núcleo (leitores, gravação, campos):
+Core tests (parsers, writing, fields):
 
 ```sh
 swift test
 ```
 
-O núcleo (`ConfCore`) também compila e passa nos testes no Linux; lá o
-`Package.swift` deixa de fora o app, que depende do AppKit:
+The core (`ConfCore`) also builds and passes its tests on Linux; there
+`Package.swift` leaves out the app, which depends on AppKit:
 
 ```sh
 docker run --rm -v "$PWD":/src:ro swift:6.0 \
   bash -c 'cp -r /src /tmp/w && cd /tmp/w && rm -rf .build && swift test'
 ```
 
-## Usar
+## Usage
 
 ```sh
-open -a "$PWD/Konfig.app" exemplos/config.toml
-open -a "$PWD/Konfig.app" exemplos/config.json
-open -a "$PWD/Konfig.app" exemplos/config.jsonc
-open -a "$PWD/Konfig.app" exemplos/settings.jsonc
-open -a "$PWD/Konfig.app" exemplos/config.json5
-open -a "$PWD/Konfig.app" exemplos/.env
-open -a "$PWD/Konfig.app" exemplos/config.ini
-open -a "$PWD/Konfig.app" exemplos/config.yaml
-# ou
-open Konfig.app --args exemplos/config.toml
+open -a "$PWD/Konfig.app" examples/config.toml
+open -a "$PWD/Konfig.app" examples/config.json
+open -a "$PWD/Konfig.app" examples/config.jsonc
+open -a "$PWD/Konfig.app" examples/settings.jsonc
+open -a "$PWD/Konfig.app" examples/config.json5
+open -a "$PWD/Konfig.app" examples/.env
+open -a "$PWD/Konfig.app" examples/config.ini
+open -a "$PWD/Konfig.app" examples/config.yaml
+# or
+open Konfig.app --args examples/config.toml
 ```
 
-O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc`, `.json5`, `.ini`, `.yaml` ou `.yml`
-(também o arquivo chamado `.editorconfig`, que é INI); e `.env`
-para o arquivo chamado exatamente `.env`, para `.env.qualquer-coisa` (`.env.local`,
-`.env.production`) e para `qualquer-coisa.env` (`producao.env`). O nome conta mais
-que o tipo que o macOS dá ao arquivo: para `.env` o sistema devolve extensão vazia e
-o tipo genérico `public.data`, e para `.env.local`, a extensão `local` (há um teste
-que confere isso).
+The format comes from the file name: extension `.toml`, `.json`, `.jsonc`, `.json5`, `.ini`, `.yaml` or `.yml`
+(also the file named `.editorconfig`, which is INI); and `.env`
+for the file named exactly `.env`, for `.env.anything` (`.env.local`,
+`.env.production`) and for `anything.env` (`production.env`). The name counts for more
+than the type macOS gives the file: for `.env` the system reports an empty extension and
+the generic type `public.data`, and for `.env.local`, the extension `local` (a test
+checks this).
 
-**Um `.json` com comentário ou vírgula final é aberto como JSONC**, com o aviso
-discreto "JSON com comentários" no pé da barra lateral, em vez de ser recusado. O
-motivo: muitos arquivos de configuração com extensão `.json` são, na prática, JSONC
-— o `settings.json` e o `launch.json` do VS Code, o `tsconfig.json`, o
-`devcontainer.json`, o `.eslintrc.json`. Recusá-los deixaria o app inútil justamente
-para eles, e o dono do arquivo já escolheu o dialeto (o programa que o lê aceita
-comentários). O aviso existe porque o contrário não vale: nem todo programa que lê
-JSON aceita comentário, e o nome do arquivo não conta isso a ninguém. O Konfig nunca
-transforma um JSON puro em JSONC: um valor cru com comentário num `.json` sem
-comentários é recusado ao gravar. Já o JSON5 só vale com a extensão `.json5` (um
-`.json` com chave sem aspas é recusado, com linha e coluna).
+**A `.json` with a comment or a trailing comma is opened as JSONC**, with the discreet
+notice "JSON with comments" at the bottom of the sidebar, instead of being rejected. The
+reason: many configuration files with a `.json` extension are, in practice, JSONC
+— VS Code's `settings.json` and `launch.json`, `tsconfig.json`,
+`devcontainer.json`, `.eslintrc.json`. Rejecting them would make the app useless precisely
+for them, and the file's owner has already chosen the dialect (the program that reads it accepts
+comments). The notice exists because the reverse does not hold: not every program that reads
+JSON accepts comments, and the file name tells nobody about it. Konfig never
+turns plain JSON into JSONC: a raw value with a comment in a `.json` without
+comments is rejected on save. JSON5, on the other hand, only applies with the `.json5` extension (a
+`.json` with an unquoted key is rejected, with line and column).
 
-No painel de abrir (⌘O), todo arquivo pode ser escolhido; arquivos que começam com
-ponto (`.env`) ficam ocultos no painel até ⌘⇧. (Comando-Shift-ponto).
+In the open panel (⌘O), any file can be chosen; files starting with a
+dot (`.env`) are hidden in the panel until ⌘⇧. (Command-Shift-period).
 
-(O `open -a` não aceita caminho relativo como `./Konfig.app`; use o caminho completo.)
+(`open -a` does not accept a relative path such as `./Konfig.app`; use the full path.)
 
-Aberto sem arquivo, o app mostra o painel de abrir.
+Launched without a file, the app shows the open panel.
 
-### A janela
+### The window
 
-- **Barra lateral** (em YAML, como em JSON: cada mapa em bloco é uma seção e cada lista
-  de mapas, um grupo): a raiz do arquivo, cada `[tabela]` e cada item de
-  `[[lista de tabelas]]` (agrupados pelo nome da lista; o item ganha o nome do
-  campo `nome`, `name`, `titulo`, `title` ou `id`, se houver). Em JSON, cada
-  objeto `{…}` aninhado é uma seção (com o caminho, como `compilerOptions.paths`)
-  e uma lista só de objetos vira um grupo, com um item por objeto, como a
-  `[[lista]]` do TOML. Um ponto azul marca as seções com alteração não salva.
-- **Formulário**, um controle por tipo:
-  - texto: caixa de texto (confirma com Return ou ao sair do campo; Esc desfaz a digitação);
-  - inteiro e decimal: caixa numérica; o inteiro continua inteiro e, ao gravar,
-    mantém a base (`0xff`, `0o755`, `0b1010`) e o agrupamento com `_`;
-  - verdadeiro/falso: chave liga/desliga;
-  - **escolha**: se o comentário acima da chave (ou no fim da linha) tiver o
-    formato `a | b | c`, o texto vira uma lista de opções;
-  - os 4 tipos de data/hora (com fuso, data-hora local, data, hora): seletor de
-    data, respeitando o tipo; o fuso do arquivo é mantido;
-  - listas simples (todos os itens do mesmo tipo): etiquetas com × para remover e
-    "+ adicionar";
-  - listas mistas, listas de tabelas embutidas e tabelas embutidas: o texto TOML
-    do valor, validado ao confirmar. Em JSON, o mesmo vale para listas mistas,
-    listas vazias e `null` (texto JSON do valor).
+- **Sidebar** (in YAML, as in JSON: each block mapping is a section and each sequence
+  of mappings, a group): the file's root, each `[table]` and each item of an
+  `[[array of tables]]` (grouped by the array's name; an item is titled after its
+  `name`, `title`, `id` or `label` field, or the Portuguese `nome`, `titulo` or `rotulo`, if present). In JSON, each
+  nested `{…}` object is a section (with its path, such as `compilerOptions.paths`)
+  and an array made only of objects becomes a group, with one item per object, like
+  TOML's `[[array]]`. A blue dot marks the sections with unsaved changes.
+- **Form**, one control per type:
+  - text: a text box (confirm with Return or by leaving the field; Esc undoes the typing);
+  - integer and decimal: a number box; an integer stays an integer and, on save,
+    keeps its base (`0xff`, `0o755`, `0b1010`) and its `_` grouping;
+  - true/false: an on/off switch;
+  - **choice**: if the comment above the key (or at the end of the line) has the
+    form `a | b | c`, the text becomes a list of options;
+  - the 4 date/time types (with offset, local date-time, date, time): a date
+    picker that respects the type; the file's offset is kept;
+  - simple arrays (all items of the same type): tokens with × to remove and
+    "+ add";
+  - mixed arrays, arrays of inline tables and inline tables: the TOML text
+    of the value, validated on confirm. In JSON, the same goes for mixed arrays,
+    empty arrays and `null` (the JSON text of the value).
 
-  Os comentários acima da linha e no fim dela aparecem como ajuda do campo. Em
-  JSONC e JSON5 valem `// …` e `/* … */`, acima do membro ou no fim da linha (antes ou
-  depois da vírgula) — inclusive a dica de escolha `a | b | c`.
-  Comentário só vira ajuda se estiver colado à linha (sem linha em branco no meio).
-  O comentário do começo do arquivo, separado da primeira chave ou seção por uma
-  linha em branco, não é de nenhum campo: aparece em **Sobre o arquivo**, no topo
-  da barra lateral, como está no arquivo (recuos mantidos), e pode ser editado ali:
-  vale ao sair da caixa ou em Aplicar (⌘Return), entra no ⌘Z e, ao gravar, só as
-  linhas de comentário que mudaram são reescritas (linha nova ganha o marcador da
-  primeira linha do comentário, `#`, `;` ou `//`). Texto vazio apaga o comentário.
-  Comentários soltos no meio do arquivo (com linha em branco antes da chave
-  seguinte) continuam só no modo Texto.
-- **Texto** (⌘2): o arquivo inteiro editável, com cores simples (em JSON, JSONC e
-  JSON5: chaves em azul, textos em vermelho, comentários `//` e `/* */` em cinza; em
-  JSON5 também as chaves sem aspas e os textos com aspas simples; em INI: `[seções]`
-  em laranja, chaves em azul, comentários `;` e `#` em cinza, valores entre aspas em
-  vermelho, com as mesmas regras de comentário do leitor; em YAML: chaves em azul,
-  comentários `#` em cinza, textos entre aspas e o conteúdo dos blocos `|`/`>` em vermelho,
-  `---` e `...` em laranja). O texto só é
-  aplicado ao documento se for válido no formato do arquivo (TOML, JSON/JSONC, JSON5, .env, INI ou YAML);
-  enquanto não for, o erro aparece com
-  linha e coluna e a linha fica marcada. Vale ao voltar para o Formulário (⌘1),
-  ao clicar em Aplicar (⌘↩) ou ao salvar. As aspas "inteligentes" do macOS ficam
-  desligadas. Se um JSON puro ganhar comentário ou vírgula final, o rodapé avisa
-  (vale, mas nem todo programa aceita JSONC).
-- **Painel de alterações** (botão à direita na barra ou ⌥⌘I): cada trecho que vai
-  mudar no disco, com a linha antes e depois. Clicar leva à seção do campo.
+  Comments above the line and at its end show up as the field's help. In
+  JSONC and JSON5 both `// …` and `/* … */` count, above the member or at the end of the line (before or
+  after the comma) — including the `a | b | c` choice hint.
+  A comment only becomes help if it is attached to the line (no blank line in between).
+  The comment at the top of the file, separated from the first key or section by a
+  blank line, belongs to no field: it shows up in **About this file**, at the top
+  of the sidebar, as it is in the file (indentation kept), and can be edited there:
+  it takes effect when leaving the box or on Apply (⌘Return), goes into ⌘Z and, on save, only the
+  comment lines that changed are rewritten (a new line gets the marker of the
+  comment's first line, `#`, `;` or `//`). Empty text deletes the comment.
+  Loose comments in the middle of the file (with a blank line before the next
+  key) remain visible only in Text mode.
+- **Text** (⌘2): the whole file, editable, with simple colors (in JSON, JSONC and
+  JSON5: keys in blue, strings in red, `//` and `/* */` comments in gray; in
+  JSON5 also unquoted keys and single-quoted strings; in INI: `[sections]`
+  in orange, keys in blue, `;` and `#` comments in gray, quoted values in
+  red, with the same comment rules as the parser; in YAML: keys in blue,
+  `#` comments in gray, quoted strings and the content of `|`/`>` blocks in red,
+  `---` and `...` in orange). The text is only
+  applied to the document if it is valid in the file's format (TOML, JSON/JSONC, JSON5, .env, INI or YAML);
+  while it is not, the error shows with
+  line and column and the line is highlighted. It takes effect when going back to the Form (⌘1),
+  when clicking Apply (⌘↩) or on save. macOS "smart" quotes are
+  turned off. If plain JSON gains a comment or a trailing comma, the footer warns
+  (it is accepted, but not every program accepts JSONC).
+- **Changes panel** (button on the right of the toolbar or ⌥⌘I): each piece that will
+  change on disk, with the line before and after. Clicking goes to the field's section.
 
-### Salvar, desfazer, reverter
+### Save, undo, revert
 
-O app usa o sistema de documentos do macOS, então:
+The app uses the macOS document system, so:
 
-- ⌘S salva. **Antes de sobrescrever**, o arquivo como estava vai para
-  `<arquivo>.bak` (`config.toml.bak`, `tsconfig.json.bak`), ao lado dele.
-- ⌘Z / ⇧⌘Z desfazem e refazem cada alteração de campo e cada "Aplicar" do modo Texto.
-- O título mostra "— Editado" enquanto há alteração pendente.
-- Arquivo › Reverter Para volta à última versão salva (ou a versões anteriores).
-- Se outro programa gravar no arquivo e não houver edição pendente, a janela
-  recarrega sozinha. Se houver, o macOS avisa "alterado por outro aplicativo" ao salvar.
-- Antes de gravar, o resultado é relido pelo leitor e conferido; se não for válido
-  ou os valores não baterem, nada é gravado e aparece o erro. Um JSON puro não
-  vira JSONC pelo formulário: um valor cru com comentário é recusado.
+- ⌘S saves. **Before overwriting**, the file as it was goes to
+  `<file>.bak` (`config.toml.bak`, `tsconfig.json.bak`), next to it.
+- ⌘Z / ⇧⌘Z undo and redo each field change and each "Apply" in Text mode.
+- The title shows "— Edited" while there are pending changes.
+- File › Revert To goes back to the last saved version (or to earlier versions).
+- If another program writes to the file and there are no pending edits, the window
+  reloads by itself. If there are, macOS warns "changed by another application" on save.
+- Before writing, the result is parsed again and checked; if it is not valid
+  or the values do not match, nothing is written and the error shows. Plain JSON does not
+  turn into JSONC through the form: a raw value with a comment is rejected.
 
-## Abrir com duplo clique
+## Opening with a double-click
 
-O app declara que edita `.toml` (tipo `public.toml`), `.json` (`public.json`),
-`.jsonc`, `.json5`, `.env` e `.ini` (o macOS não declara estes quatro; o app declara
+The app declares that it edits `.toml` (type `public.toml`), `.json` (`public.json`),
+`.jsonc`, `.json5`, `.env` and `.ini` (macOS does not declare these four; the app declares
 `br.com.kogut.konfig.jsonc`, `br.com.kogut.konfig.json5`,
-`br.com.kogut.konfig.env` e `br.com.kogut.konfig.ini`, derivados de
-`public.plain-text`), sempre com papel Editor e `LSHandlerRank` Alternate: **não**
-se registra como padrão.
+`br.com.kogut.konfig.env` and `br.com.kogut.konfig.ini`, conforming to
+`public.plain-text`), always with the Editor role and `LSHandlerRank` Alternate: it does **not**
+register itself as the default.
 
-Para `.ini` há um detalhe: o **Xcode** importa o tipo `com.microsoft.ini` (derivado de
-`public.text`) e, numa máquina com Xcode, é esse o tipo que o sistema dá aos arquivos
-`.ini` (conferido no macOS 26 com `lsregister -dump`). Por isso o Konfig declara que
-edita os dois, `br.com.kogut.konfig.ini` e `com.microsoft.ini`: com ou sem Xcode, ele
-aparece em "Abrir com". O `.editorconfig` não tem extensão para o sistema; como o
-`.env`, é reconhecido pelo nome dentro do app (`open -a`, ⌘O ou arrastar para o ícone).
+For `.ini` there is a detail: **Xcode** imports the type `com.microsoft.ini` (conforming to
+`public.text`) and, on a machine with Xcode, that is the type the system gives to `.ini`
+files (checked on macOS 26 with `lsregister -dump`). So Konfig declares that it
+edits both, `br.com.kogut.konfig.ini` and `com.microsoft.ini`: with or without Xcode, it
+shows up in "Open With". `.editorconfig` has no extension as far as the system is concerned; like
+`.env`, it is recognized by name inside the app (`open -a`, ⌘O or dragging onto the icon).
 
-Por que `public.plain-text` e não `public.json` como tipo-pai do `.jsonc` e do
-`.json5`: num teste no macOS 26.7 com dois apps de mentira declarando extensões
-novas, uma derivada de cada, o arquivo derivado de texto puro foi indexado pelo
-Spotlight (importador RichText) e o derivado de `public.json` não teve importador
-nenhum; o "Abrir com" do texto puro oferece os editores de texto (TextEdit, Xcode…);
-e, como JSONC e JSON5 não são JSON válido, é melhor que programas que só aceitam
-JSON estrito não se ofereçam para abri-los. Os dois tipos têm prévia no Quick Look. O tipo `.env` declarado só cobre nomes como
-`producao.env`: `.env` e `.env.local` não têm extensão `env` para o sistema, então o
-Finder não os associa ao Konfig; abra-os pelo `open -a`, pelo ⌘O do app ou
-arrastando para o ícone. Para associar uma extensão:
+Why `public.plain-text` and not `public.json` as the parent type of `.jsonc` and
+`.json5`: in a test on macOS 26.7 with two dummy apps declaring new
+extensions, one conforming to each, the file conforming to plain text was indexed by
+Spotlight (RichText importer) and the one conforming to `public.json` got no importer
+at all; plain text's "Open With" offers the text editors (TextEdit, Xcode…);
+and, since JSONC and JSON5 are not valid JSON, it is better that programs that only accept
+strict JSON do not offer to open them. Both types have a Quick Look preview. The declared `.env` type only covers names such as
+`production.env`: `.env` and `.env.local` have no `env` extension as far as the system is concerned, so the
+Finder does not associate them with Konfig; open them with `open -a`, with the app's ⌘O or
+by dragging onto the icon. To associate an extension:
 
-1. Copie `Konfig.app` para `/Applications` (opcional, mas assim ele não depende desta pasta).
-2. No Finder, selecione um arquivo da extensão › Arquivo › Obter Informações (⌘I).
-3. Em "Abrir com", escolha Konfig e clique em **Alterar Tudo…**.
+1. Copy `Konfig.app` to `/Applications` (optional, but then it does not depend on this folder).
+2. In the Finder, select a file with that extension › File › Get Info (⌘I).
+3. Under "Open with", choose Konfig and click **Change All…**.
 
-Sem isso, ele aparece em "Abrir com" (botão direito no arquivo).
+Without that, it shows up in "Open With" (right-click on the file).
 
-Para YAML não há tipo a declarar: o macOS já tem `public.yaml` (extensões `.yaml` e `.yml`,
-derivado de `public.text`; conferido no macOS 26 com `UTType(filenameExtension:)`). O Konfig
-só diz que o edita, também com papel Editor e `LSHandlerRank` Alternate.
+For YAML there is no type to declare: macOS already has `public.yaml` (extensions `.yaml` and `.yml`,
+conforming to `public.text`; checked on macOS 26 with `UTType(filenameExtension:)`). Konfig
+just says that it edits it, also with the Editor role and `LSHandlerRank` Alternate.
 
-## Limitações
+## Limitations
 
-- Criar chaves ou tabelas não é feito pelo formulário — use o modo Texto.
-- Listas de várias linhas: se a **quantidade** de itens mudar, a lista é reescrita
-  com o recuo do primeiro item e a vírgula final, se havia; comentários *dentro*
-  dela se perdem. Mudando só o valor de itens, todo o resto da lista fica intacto.
-- Uma lista simples que vira lista mista (ou o contrário) precisa ser editada pelo modo Texto.
-- O seletor de data não edita fração de segundo (ela é mantida) e não mostra o ano 0000.
-- Textos de várias linhas aparecem numa caixa que cresce, mas Return confirma; para quebrar linhas com conforto, use o modo Texto.
-- O macOS salva automaticamente documentos editados (ao trocar de app, fechar a
-  janela etc.), como no TextEdit. Cada gravação, inclusive a automática, renova
-  o `.bak` com a versão anterior.
-- Sem esquema de validação, Quick Look ou comparação entre arquivos.
+- Creating keys or tables is not done through the form — use Text mode.
+- Multi-line arrays: if the **number** of items changes, the array is rewritten
+  with the first item's indentation and the trailing comma, if there was one; comments *inside*
+  it are lost. If only item values change, the rest of the array stays intact.
+- A simple array that becomes a mixed array (or the other way round) has to be edited in Text mode.
+- The date picker does not edit fractional seconds (they are kept) and does not show year 0000.
+- Multi-line strings appear in a box that grows, but Return confirms; to break lines comfortably, use Text mode.
+- macOS automatically saves edited documents (when switching apps, closing the
+  window etc.), as in TextEdit. Every save, including the automatic ones, renews
+  the `.bak` with the previous version.
+- No schema validation, Quick Look or comparison between files.
 
-### JSON, JSONC e JSON5
+### JSON, JSONC and JSON5
 
-- Texto: as partes do começo e do fim que não mudaram são copiadas byte a byte
-  (escapes inclusive); o trecho novo segue o hábito do original: `\/` se ele
-  escapava a barra, `\u00e9` se escapava acentos, mesma caixa no hexadecimal.
-- Número: inteiro continua inteiro; decimal continua decimal, com expoente se
-  havia (`1.5e3` → `2.0e3`, mesma letra `e`/`E` e o `+`) e com pelo menos as
-  mesmas casas depois do ponto (`1.50` → `2.25`, `1.50` → `3.00`). JSON não tem
-  infinito nem NaN: o valor é recusado.
-- Chave repetida: vale a última (como em JavaScript, Python e Go; o
-  `JSONSerialization` da Apple fica com a primeira). Só a última aparece no
-  formulário, e é ela que é gravada.
-- Raiz que não é objeto: uma lista de objetos vira um grupo de itens; qualquer
-  outro valor aparece como um campo só, "(raiz)".
-- Comentários `//` antes do `{` inicial não aparecem como ajuda (não pertencem a nenhum campo):
-  ficam em "Sobre o arquivo".
-- Listas que mudam de quantidade de itens seguem a regra do TOML: reescritas com o
-  recuo do primeiro item e a vírgula final se havia (em lista de uma linha ou de
-  várias); comentários dentro delas se perdem. Mudando só valores de itens, os
-  comentários ficam. Vírgula final de objeto nunca é tocada (só valores são reescritos).
-- Casos que a especificação deixa a critério de quem lê (`i_` da JSONTestSuite):
-  - **aceitos**: números fora do alcance — inteiro que não cabe em 64 bits vira
-    decimal aproximado, expoente enorme vira infinito ou zero (só são reescritos
-    se o campo for editado, e infinito não pode ser gravado); BOM UTF-8 no começo
-    (mantido ao gravar).
-  - **recusados**: arquivo que não é UTF-8 (ISO-8859-1, UTF-16, sequências
-    inválidas); escape `\u` de surrogate sem par (`"\uD800"`), que não cabe num
-    texto Unicode válido; mais de 128 níveis de listas/objetos um dentro do outro.
+- Strings: the unchanged parts at the start and at the end are copied byte for byte
+  (escapes included); the new part follows the original's habit: `\/` if it
+  escaped the slash, `\u00e9` if it escaped accented letters, same case in hexadecimal.
+- Numbers: an integer stays an integer; a decimal stays a decimal, with an exponent if
+  it had one (`1.5e3` → `2.0e3`, same letter `e`/`E` and the `+`) and with at least the
+  same number of digits after the point (`1.50` → `2.25`, `1.50` → `3.00`). JSON has no
+  infinity or NaN: such a value is rejected.
+- Duplicate key: the last one wins (as in JavaScript, Python and Go; Apple's
+  `JSONSerialization` keeps the first). Only the last one shows in the
+  form, and that is the one written.
+- A root that is not an object: an array of objects becomes a group of items; any
+  other value shows as a single field, "(root)".
+- `//` comments before the opening `{` do not show as help (they belong to no field):
+  they go to "About this file".
+- Arrays whose number of items changes follow the TOML rule: rewritten with the
+  first item's indentation and the trailing comma if there was one (in single-line or
+  multi-line arrays); comments inside them are lost. If only item values change, the
+  comments stay. An object's trailing comma is never touched (only values are rewritten).
+- Cases the specification leaves up to the parser (`i_` in the JSONTestSuite):
+  - **accepted**: out-of-range numbers — an integer that does not fit in 64 bits becomes an
+    approximate decimal, a huge exponent becomes infinity or zero (they are only rewritten
+    if the field is edited, and infinity cannot be written); a UTF-8 BOM at the start
+    (kept on save).
+  - **rejected**: a file that is not UTF-8 (ISO-8859-1, UTF-16, invalid
+    sequences); a `\u` escape of an unpaired surrogate (`"\uD800"`), which does not fit in a
+    valid Unicode string; more than 128 levels of nested arrays/objects.
 
 #### JSON5
 
-Segue a especificação 1.0.0 (spec.json5.org). Além do que o JSONC aceita:
+Follows specification 1.0.0 (spec.json5.org). On top of what JSONC accepts:
 
-- chaves sem aspas que sejam identificadores do JavaScript (letras Unicode, `$`, `_`,
-  dígitos depois do primeiro caractere, escapes `\uXXXX`), e chaves com aspas simples;
-- textos com aspas simples; quebra de linha com `\` no fim da linha (LF, CRLF, CR,
-  U+2028 ou U+2029); escapes `\'`, `\v`, `\0`, `\xHH` e qualquer outro caractere
-  escapado vale ele mesmo (`\a` é `a`); `\1` a `\9` são erro;
-- números hexadecimais (`0x1F`, `0XAB`, também com sinal), `Infinity`, `-Infinity`,
-  `NaN`, sinal `+`, `.5` e `5.`; zero à esquerda (`010`) continua erro;
-- espaços: tabulação vertical, avanço de página, espaço sem quebra (U+00A0), BOM no
-  meio do arquivo, toda a categoria Unicode Zs e os separadores U+2028/U+2029;
-  quebras de linha só com CR.
+- unquoted keys that are JavaScript identifiers (Unicode letters, `$`, `_`,
+  digits after the first character, `\uXXXX` escapes), and single-quoted keys;
+- single-quoted strings; line continuation with `\` at the end of the line (LF, CRLF, CR,
+  U+2028 or U+2029); escapes `\'`, `\v`, `\0`, `\xHH`, and any other escaped character
+  stands for itself (`\a` is `a`); `\1` to `\9` are errors;
+- hexadecimal numbers (`0x1F`, `0XAB`, also signed), `Infinity`, `-Infinity`,
+  `NaN`, a `+` sign, `.5` and `5.`; a leading zero (`010`) is still an error;
+- whitespace: vertical tab, form feed, no-break space (U+00A0), a BOM in the
+  middle of the file, the whole Unicode Zs category and the separators U+2028/U+2029;
+  CR-only line breaks.
 
-Ao gravar, cada valor mantém o estilo:
+On save, each value keeps its style:
 
-- aspas simples continuam simples (a `'` do texto novo é escapada como `\'`); aspas
-  duplas continuam duplas; o começo e o fim que não mudaram são copiados byte a byte,
-  inclusive escapes `\x41` e as quebras com `\`;
-- inteiro hexadecimal continua hexadecimal, com o mesmo `0x`/`0X`, a mesma caixa
-  dos dígitos e pelo menos a mesma largura (`0x00FF` → `0x000A`); negativo vira `-0x…`;
-- `+` se mantém (`+7` → `+8`, `+1.50` → `+2.25`); `.5` → `.25`; `5.` → `6.` (e `6.5`
-  quando o valor tem fração); infinito e NaN são gravados como `Infinity`, `-Infinity`
-  e `NaN` (o JSON5 aceita, o JSON não);
-- decimais seguem as regras do JSON (expoente, casas depois do ponto).
+- single quotes stay single (a `'` in the new text is escaped as `\'`); double
+  quotes stay double; the unchanged start and end are copied byte for byte,
+  including `\x41` escapes and `\` line continuations;
+- a hexadecimal integer stays hexadecimal, with the same `0x`/`0X`, the same digit
+  case and at least the same width (`0x00FF` → `0x000A`); a negative one becomes `-0x…`;
+- `+` is kept (`+7` → `+8`, `+1.50` → `+2.25`); `.5` → `.25`; `5.` → `6.` (and `6.5`
+  when the value has a fraction); infinity and NaN are written as `Infinity`, `-Infinity`
+  and `NaN` (JSON5 accepts them, JSON does not);
+- decimals follow the JSON rules (exponent, digits after the point).
 
-Limitações: inteiro maior que 64 bits (inclusive em hexadecimal) vira decimal
-aproximado; escape `\u` de surrogate sem par é recusado, como no JSON; `-NaN` é
-lido como NaN (o sinal some se o campo for editado); a chave nunca é reescrita (para
-renomear, use o modo Texto); num arquivo só com CR como quebra, a linha dos erros
-conta só LF e sai errada.
+Limitations: an integer larger than 64 bits (hexadecimal included) becomes an approximate
+decimal; a `\u` escape of an unpaired surrogate is rejected, as in JSON; `-NaN` is
+read as NaN (the sign is lost if the field is edited); the key is never rewritten (to
+rename, use Text mode); in a file with CR-only line breaks, the line number in errors
+counts only LF and comes out wrong.
 
 ### .env
 
-- Todo valor é texto e não há seções: o formulário mostra uma seção só, "Variáveis".
-  Um comentário `a | b | c` vira escolha, como no TOML.
-- Linha que o leitor não entende é erro (com linha e coluna), em vez de ser
-  ignorada como no `dotenv`: assim nada some ao gravar. Chave repetida também é
-  erro, para não editar a variável errada.
-- Valor de várias linhas: só entre aspas. Ao editar, o trecho novo usa `\n` (aspas
-  duplas) ou a quebra do arquivo (aspas simples que já ocupavam várias linhas).
-- A coloração do modo Texto é por linha; valores entre aspas de várias linhas
-  ficam coloridos só na primeira.
-- Criar ou apagar variáveis: pelo modo Texto.
+- Every value is text and there are no sections: the form shows a single section, "Variables".
+  An `a | b | c` comment becomes a choice, as in TOML.
+- A line the parser does not understand is an error (with line and column), instead of being
+  ignored as `dotenv` does: that way nothing disappears on save. A duplicate key is also an
+  error, so as not to edit the wrong variable.
+- Multi-line values: only inside quotes. When editing, the new text uses `\n` (double
+  quotes) or the file's line break (single quotes that already spanned several lines).
+- Text mode coloring is per line; multi-line quoted values
+  are colored only on their first line.
+- Creating or deleting variables: through Text mode.
 
-### Regras do .env
+### .env rules
 
-Não há norma oficial; estas são as regras exatas que o Konfig aceita, escolhidas
-pelo que o `dotenv` do Node e o do Ruby fazem em comum.
+There is no official standard; these are the exact rules Konfig accepts, chosen
+from what Node's and Ruby's `dotenv` have in common.
 
-- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar).
-  CR sozinho é erro.
-- Cada linha é uma destas:
-  - em branco (só espaços e tabulações);
-  - comentário: `#` no começo (espaços antes são permitidos);
-  - `CHAVE=valor`, com `export ` opcional na frente, espaços e tabulações
-    opcionais no começo da linha e em volta do `=`.
-- Chave: letras ASCII, dígitos, `_`, `.` e `-` (`[A-Za-z0-9_.-]+`). `export=1` é a
-  variável `export`; `export A=1` é a variável `A`.
-- Valor sem aspas: vai até o primeiro `#` ou o fim da linha; espaços e tabulações
-  nas pontas não fazem parte dele (`A = x y  # c` → `x y`). O `#` começa o
-  comentário mesmo colado (`A=abc#def` → `abc`, como no `dotenv`). Valor vazio
-  (`A=`) é texto vazio.
-- `'aspas simples'`: literal, sem escapes; pode ter `#` e ocupar várias linhas.
-- `"aspas duplas"`: escapes `\n` (quebra de linha), `\r`, `\"` e `\\`; qualquer
-  outra barra fica como está (`"c:\pasta"` → `c:\pasta`). Pode ocupar várias linhas.
-- Dentro de aspas, uma quebra CRLF vale como `\n` (como no `dotenv`).
-- Depois das aspas, só espaços e um comentário `#` opcional.
-- Crase (`` ` ``) não é aspas: `` A=`x` `` é o texto `` `x` ``.
-- `${VAR}` e `$VAR` **não** são expandidos: são texto.
-- Comentários em linhas próprias logo acima da variável (sem linha em branco no
-  meio) e o comentário no fim da linha viram a ajuda do campo.
+- File in UTF-8, with or without BOM; LF or CRLF line breaks (kept on save).
+  A lone CR is an error.
+- Each line is one of these:
+  - blank (only spaces and tabs);
+  - comment: `#` at the start (spaces before it are allowed);
+  - `KEY=value`, with an optional `export ` in front, optional spaces and tabs
+    at the start of the line and around the `=`.
+- Key: ASCII letters, digits, `_`, `.` and `-` (`[A-Za-z0-9_.-]+`). `export=1` is the
+  variable `export`; `export A=1` is the variable `A`.
+- Unquoted value: runs up to the first `#` or the end of the line; spaces and tabs
+  at either end are not part of it (`A = x y  # c` → `x y`). The `#` starts a
+  comment even with no space before it (`A=abc#def` → `abc`, as in `dotenv`). An empty value
+  (`A=`) is empty text.
+- `'single quotes'`: literal, no escapes; may contain `#` and span several lines.
+- `"double quotes"`: escapes `\n` (line break), `\r`, `\"` and `\\`; any
+  other backslash stays as is (`"c:\folder"` → `c:\folder`). May span several lines.
+- Inside quotes, a CRLF break counts as `\n` (as in `dotenv`).
+- After the quotes, only spaces and an optional `#` comment.
+- A backtick (`` ` ``) is not a quote: `` A=`x` `` is the text `` `x` ``.
+- `${VAR}` and `$VAR` are **not** expanded: they are text.
+- Comments on their own lines right above the variable (no blank line in
+  between) and the comment at the end of the line become the field's help.
 
-Ao gravar, o tipo de aspas se mantém:
+On save, the kind of quotes is kept:
 
-- sem aspas continua sem aspas se o valor novo couber: vazio, ou sem espaço,
-  tabulação, `#`, aspas (`"`, `'`, `` ` ``) nem caracteres de controle. Se não
-  couber, aspas duplas;
-- aspas simples continuam simples se o valor não tiver `'` nem CR (e quebra de
-  linha só se o original já tinha); senão, aspas duplas;
-- aspas duplas continuam duplas: o começo e o fim que não mudaram são copiados
-  byte a byte, e o trecho novo escapa só `\`, `"`, quebra de linha e CR.
+- unquoted stays unquoted if the new value fits: empty, or with no space,
+  tab, `#`, quotes (`"`, `'`, `` ` ``) or control characters. If it does not
+  fit, double quotes;
+- single quotes stay single if the value has no `'` and no CR (and a line break
+  only if the original already had one); otherwise, double quotes;
+- double quotes stay double: the unchanged start and end are copied
+  byte for byte, and the new part escapes only `\`, `"`, line break and CR.
 
 ### INI
 
-- Todo valor é texto; cada `[seção]` é um item da barra lateral e as chaves antes da
-  primeira seção ficam em "Geral". Um comentário `a | b | c` vira escolha.
-- Listas `chave[] = …` (estilo PHP) aparecem como etiquetas. Acrescentar um item
-  acrescenta **uma linha**, logo depois da última da lista, copiando o começo dela
-  (recuo, chave, separador e espaços); tirar um item tira **a linha dele** (o
-  comentário que estava acima dela fica). Uma lista não pode ficar vazia pelo
-  formulário: para apagá-la, use o modo Texto.
-- Se outra chave estiver no meio dos itens de uma lista e as duas forem alteradas,
-  as alterações são aplicadas uma de cada vez (o trecho da lista vai do primeiro
-  ao último item e contém a outra chave); o resultado é o mesmo.
-- Não há escapes: um valor com quebra de linha não pode ser gravado, nem um que
-  precise de aspas e tenha aspas duplas **e** simples.
-- O arquivo precisa estar em UTF-8 (com ou sem BOM). `desktop.ini` gravado pelo
-  Windows costuma estar em UTF-16 ou na página de código do sistema: é recusado.
-- Criar chaves e seções: pelo modo Texto.
+- Every value is text; each `[section]` is an item in the sidebar and the keys before the
+  first section go to "General". An `a | b | c` comment becomes a choice.
+- `key[] = …` arrays (PHP style) show as tokens. Adding an item
+  adds **one line**, right after the array's last one, copying its beginning
+  (indentation, key, separator and spaces); removing an item removes **its line** (the
+  comment that was above it stays). An array cannot be left empty through the
+  form: to delete it, use Text mode.
+- If another key sits among an array's items and both are changed,
+  the changes are applied one at a time (the array's span goes from the first
+  to the last item and contains the other key); the result is the same.
+- There are no escapes: a value with a line break cannot be written, nor one that
+  needs quotes and has both double **and** single quotes.
+- The file must be UTF-8 (with or without BOM). A `desktop.ini` written by
+  Windows is usually UTF-16 or in the system code page: it is rejected.
+- Creating keys and sections: through Text mode.
 
-### Dialeto INI
+### INI dialect
 
-INI não tem norma: o Windows (`GetPrivateProfileString`), o PHP (`parse_ini_file`),
-o Python (`configparser`) e o Git (`git config`) seguem regras diferentes. O Konfig
-aceita exatamente estas, escolhidas para abrir sem surpresa os arquivos mais comuns
-(`php.ini`, `.editorconfig`, `desktop.ini`, arquivos de jogos e programas Windows) e
-para nunca adivinhar: o que é ambíguo é recusado, com linha e coluna, em vez de ser
-lido de um jeito que o programa dono do arquivo talvez não leia.
+INI has no standard: Windows (`GetPrivateProfileString`), PHP (`parse_ini_file`),
+Python (`configparser`) and Git (`git config`) follow different rules. Konfig
+accepts exactly these, chosen to open the most common files without surprises
+(`php.ini`, `.editorconfig`, `desktop.ini`, files of games and Windows programs) and
+to never guess: anything ambiguous is rejected, with line and column, instead of being
+read in a way the program that owns the file might not read it.
 
-- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar). CR
-  sozinho é erro.
-- **Linhas em branco** são preservadas e separam o comentário da chave seguinte.
-- **Comentário de linha**: `;` ou `#` no começo da linha (espaços antes são
-  permitidos). Os comentários logo acima de uma chave (sem linha em branco no meio)
-  viram a ajuda do campo, sem as marcas repetidas (`;; texto` → `texto`).
-- **Seção**: `[nome]`. Espaços dentro dos colchetes fazem parte do nome, tirando os
-  das pontas (`[ CLI Server ]` → `CLI Server`). Pontos são literais: `[a.b]` é a
-  seção `a.b`, não uma subseção de `a`. O nome vai até o primeiro `]` depois do qual
-  só há espaços e, opcionalmente, um comentário; assim `[*.[ch]]` (EditorConfig) é a
-  seção `*.[ch]` e `[a] ; nota` é a seção `a` com o comentário `nota`. Seção sem nome
-  (`[]`) é erro. Uma seção que aparece de novo continua a primeira (as chaves se
-  juntam; repetir uma chave entre as duas partes é erro).
-- **Chaves antes da primeira seção** ficam na seção "Geral".
-- **Par**: `chave = valor` ou `chave: valor`; vale o primeiro `=` ou `:` da linha
-  (`url = http://x` tem a chave `url`). O separador e os espaços em volta dele
-  nunca são reescritos. A chave é o texto antes do separador, sem os espaços das pontas.
-- **Valor sem aspas**: os espaços das pontas não fazem parte dele (e ficam no
-  arquivo). Termina num comentário: `;` ou `#` **depois de um espaço ou tabulação**
-  (`a = x ; nota`). Colados, fazem parte do valor: `url = http://x/#a` e `a = b;c`.
-  Dois casos no começo do valor: `;` é comentário (`a = ; nota` é valor vazio, como
-  no PHP) e `#` é valor (`cor = #DD0000`, ver abaixo).
-- **Valor entre aspas** duplas ou simples, **sem escapes** (`\` é uma barra); a aspa
-  fecha na mesma linha, e depois dela só podem vir espaços e um comentário.
-  `"  com espaços ; e # dentro  "` guarda tudo isso.
-- **Todo valor é texto**: não há como saber se `On`, `yes` ou `1` é sim/não (o PHP
-  diz que sim, o Python depende de quem lê, o EditorConfig só aceita `true`).
-- **Listas no estilo PHP**: várias linhas `chave[] = valor` na mesma seção formam uma
-  lista (`ext [] =` é a mesma lista). As chaves `extension` e `zend_extension`
-  repetidas também formam lista (ver abaixo).
-- **Chave repetida sem `[]` na mesma seção é recusada**, com linha e coluna: editar
-  uma delas seria editar talvez a que o programa ignora. `x` e `x[]` na mesma seção
-  também colidem.
-- **Linha que não é seção, par nem comentário é recusada**, com linha e coluna.
+- File in UTF-8, with or without BOM; LF or CRLF line breaks (kept on save). A lone
+  CR is an error.
+- **Blank lines** are preserved and separate a comment from the following key.
+- **Line comment**: `;` or `#` at the start of the line (spaces before it are
+  allowed). The comments right above a key (no blank line in between)
+  become the field's help, without the repeated markers (`;; text` → `text`).
+- **Section**: `[name]`. Spaces inside the brackets are part of the name, except
+  those at either end (`[ CLI Server ]` → `CLI Server`). Dots are literal: `[a.b]` is the
+  section `a.b`, not a subsection of `a`. The name runs up to the first `]` followed
+  only by spaces and, optionally, a comment; so `[*.[ch]]` (EditorConfig) is the
+  section `*.[ch]` and `[a] ; note` is the section `a` with the comment `note`. A section without a name
+  (`[]`) is an error. A section that appears again continues the first one (the keys are
+  merged; repeating a key across the two parts is an error).
+- **Keys before the first section** go to the "General" section.
+- **Pair**: `key = value` or `key: value`; the first `=` or `:` on the line counts
+  (`url = http://x` has the key `url`). The separator and the spaces around it
+  are never rewritten. The key is the text before the separator, trimmed at both ends.
+- **Unquoted value**: spaces at either end are not part of it (and stay in the
+  file). It ends at a comment: `;` or `#` **after a space or tab**
+  (`a = x ; note`). With no space before them, they are part of the value: `url = http://x/#a` and `a = b;c`.
+  Two cases at the start of the value: `;` is a comment (`a = ; note` is an empty value, as
+  in PHP) and `#` is a value (`color = #DD0000`, see below).
+- **Quoted value**, double or single, **with no escapes** (`\` is a backslash); the quote
+  closes on the same line, and after it only spaces and a comment may follow.
+  `"  with spaces ; and # inside  "` keeps all of that.
+- **Every value is text**: there is no way to know whether `On`, `yes` or `1` is a yes/no (PHP
+  says yes, for Python it depends on who reads it, EditorConfig only accepts `true`).
+- **PHP-style arrays**: several `key[] = value` lines in the same section form an
+  array (`ext [] =` is the same array). Repeated `extension` and `zend_extension` keys
+  also form an array (see below).
+- **A key repeated without `[]` in the same section is rejected**, with line and column: editing
+  one of them might mean editing the one the program ignores. `x` and `x[]` in the same section
+  also collide.
+- **A line that is not a section, pair or comment is rejected**, with line and column.
 
-Ao gravar, o tipo de aspas do valor se mantém: sem aspas continua sem aspas se o
-texto couber (não vazio nas pontas, sem `;`, sem `#` no começo ou depois de espaço,
-sem começar com aspas); se não couber, aspas duplas (ou simples, se o texto tiver
-`"`). Aspas duplas continuam duplas e simples continuam simples, a menos que o texto
-tenha essa aspa. Um valor vazio em `chave =` recebe um espaço depois do `=` (`chave = novo`).
+On save, the value's kind of quotes is kept: unquoted stays unquoted if the
+text fits (no spaces at either end, no `;`, no `#` at the start or after a space,
+not starting with a quote); if it does not fit, double quotes (or single, if the text has
+`"`). Double quotes stay double and single stay single, unless the text
+contains that quote. An empty value in `key =` gets a space after the `=` (`key = new`).
 
-**Ajustes feitos ao testar com arquivos reais** (a regra pedida no começo foi
-mudada nestes pontos):
+**Adjustments made while testing with real files** (the rule as first specified was
+changed on these points):
 
-- `#` **no começo do valor é valor**, não comentário. O `php.ini-production` e o
-  `php.ini-development` oficiais trazem `;highlight.string  = #DD0000` (e mais quatro
-  cores): descomentada, a linha precisa dar a cor `#DD0000`, que é o que o PHP lê (o
-  PHP não usa `#` como comentário desde a versão 7). Com a regra "`#` depois de
-  espaço é comentário", o valor seria vazio. Ao gravar, um texto que começa com `#`
-  vai entre aspas, para não depender disso.
-- `;` no começo do valor continua comentário (`chave = ; nota`), como no PHP e no Windows.
-- `extension` e `zend_extension` **repetidas são lista**, não erro. É o jeito
-  documentado de carregar extensões no `php.ini` (`;extension=curl`,
-  `;extension=gd`… descomentadas, uma por linha); recusar a repetição faria quase todo
-  `php.ini` de uso real (Windows, XAMPP) não abrir. Para qualquer outra chave a
-  repetição continua recusada.
-- O nome da seção vai até o **primeiro `]` seguido só de espaços ou comentário**, e
-  não até o primeiro `]`: o `.editorconfig` usa globs com colchetes, como `[*.[ch]]`.
-- O valor gravado sem aspas também não pode ter `;` em lugar nenhum (nem colado), porque
-  o PHP corta o valor no `;`: `a = b;c` é lido pelo Konfig como `b;c`, mas um valor
-  novo `b;c` é gravado como `"b;c"`, que os dois leem igual.
+- `#` **at the start of the value is a value**, not a comment. The official `php.ini-production` and
+  `php.ini-development` contain `;highlight.string  = #DD0000` (and four more
+  colors): uncommented, the line has to yield the color `#DD0000`, which is what PHP reads (PHP
+  has not used `#` for comments since version 7). With the rule "`#` after a
+  space is a comment", the value would be empty. On save, a text starting with `#`
+  is quoted, so as not to depend on this.
+- `;` at the start of the value is still a comment (`key = ; note`), as in PHP and Windows.
+- Repeated `extension` and `zend_extension` **are an array**, not an error. That is the
+  documented way to load extensions in `php.ini` (`;extension=curl`,
+  `;extension=gd`… uncommented, one per line); rejecting the repetition would keep almost every
+  real-world `php.ini` (Windows, XAMPP) from opening. For any other key the
+  repetition is still rejected.
+- The section name runs up to the **first `]` followed only by spaces or a comment**, and
+  not up to the first `]`: `.editorconfig` uses globs with brackets, such as `[*.[ch]]`.
+- A value written without quotes also cannot contain `;` anywhere (not even without a space), because
+  PHP cuts the value at the `;`: `a = b;c` is read by Konfig as `b;c`, but a new
+  value `b;c` is written as `"b;c"`, which both read the same way.
 
-**Fora do dialeto** (e como aparecem se o arquivo os tiver):
+**Outside the dialect** (and how they show up if the file has them):
 
-- **Continuação de valor em várias linhas** (`configparser` do Python: linha
-  seguinte recuada): a linha de continuação não tem `=` nem `:`, então o arquivo é
-  recusado com erro nessa linha. Se a continuação tiver `=` ou `:`, ela vira uma
-  chave à parte (`  b = 2` recuado é a chave `b`).
-- **Interpolação** `%(x)s` (Python) e `${x}` (PHP, Python `ExtendedInterpolation`):
-  fica como texto, sem expandir (`%(home)s/bin` é exatamente esse texto).
-- **Subseções do Git** (`[remote "origin"]`): o nome da seção é o texto inteiro,
-  `remote "origin"`, com as aspas; dá para editar as chaves, mas o Konfig não sabe
-  que é a subseção `origin` de `remote`. Chaves repetidas do Git (`fetch` várias
-  vezes) são recusadas, e o `.gitconfig` não é associado ao Konfig.
-- **Chave sem valor** (`skip-networking` do `my.cnf`, `allow_no_value` do Python):
-  recusada como linha que não é par.
-- **Escapes** em aspas duplas (`\"`, `\n`, `${VAR}` do PHP dentro de aspas): ficam
-  como estão no texto (o PHP expande alguns; o Konfig mostra o texto cru).
+- **Multi-line value continuation** (Python's `configparser`: the following
+  line indented): the continuation line has neither `=` nor `:`, so the file is
+  rejected with an error on that line. If the continuation has `=` or `:`, it becomes a
+  separate key (an indented `  b = 2` is the key `b`).
+- **Interpolation** `%(x)s` (Python) and `${x}` (PHP, Python's `ExtendedInterpolation`):
+  stays as text, not expanded (`%(home)s/bin` is exactly that text).
+- **Git subsections** (`[remote "origin"]`): the section name is the whole text,
+  `remote "origin"`, quotes included; the keys can be edited, but Konfig does not know
+  it is the `origin` subsection of `remote`. Git's repeated keys (`fetch` several
+  times) are rejected, and `.gitconfig` is not associated with Konfig.
+- **Key without a value** (`skip-networking` in `my.cnf`, Python's `allow_no_value`):
+  rejected as a line that is not a pair.
+- **Escapes** inside double quotes (`\"`, `\n`, PHP's `${VAR}` inside quotes): stay
+  as they are in the text (PHP expands some; Konfig shows the raw text).
 
 ### YAML
 
-#### Subconjunto aceito
+#### Accepted subset
 
-A norma YAML 1.2 completa (âncoras, etiquetas de tipo, vários documentos num arquivo, chaves
-complexas) seria um projeto maior que o resto do app. O Konfig lê o subconjunto que aparece em
-arquivos de configuração:
+The full YAML 1.2 specification (anchors, type tags, several documents in one file, complex
+keys) would be a bigger project than the rest of the app. Konfig reads the subset found in
+configuration files:
 
-- **Um documento por arquivo**, com `---` opcional no começo e `...` opcional no fim (depois do
-  `...`, só comentários). Arquivo vazio ou só com comentários é um arquivo sem valores.
-- **Mapas em bloco** (`chave: valor`, aninhados pelo recuo) e **listas em bloco** (`- item`),
-  inclusive lista de mapas (`- nome: x` com as linhas seguintes recuadas), lista no mesmo recuo
-  da chave (`chave:` e na linha de baixo `- a`) e listas e mapas compactos (`- - a`, `- a: 1`).
-  O recuo é só com espaços: tabulação no recuo é erro, como diz a norma. Chave repetida no
-  mesmo mapa é erro (a norma também proíbe).
-- **Valores**: sem aspas (de uma ou várias linhas; as quebras viram espaço e as linhas em branco,
-  `\n`); entre aspas simples (`''` é uma aspa); entre aspas duplas, com todos os escapes da
-  norma (`\n`, `\t`, `\x41`, `\u00e9`, `\U0001F600`, `\N`, `\_`, `\L`, `\P`, quebra escapada…);
-  em bloco, `|` (literal) e `>` (dobrado), com os indicadores de corte `-` e `+` e de recuo `1`–`9`.
-- **Coleções em linha** `[a, b]` e `{a: 1, b}`, também em várias linhas e uma dentro da outra,
-  com par sozinho em lista (`[a: 1]`) e chave sem valor (`{a, b: 1}` tem `a: null`).
-- **Comentários `#`** (com espaço antes): os que estão logo acima de uma chave (sem linha em branco
-  no meio) e o do fim da linha viram a ajuda do campo; `a | b | c` vira lista de opções.
-- Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar). CR sozinho e
-  caracteres de controle são recusados.
+- **One document per file**, with an optional `---` at the start and an optional `...` at the end (after
+  the `...`, only comments). An empty file, or one with only comments, is a file with no values.
+- **Block mappings** (`key: value`, nested by indentation) and **block sequences** (`- item`),
+  including sequences of mappings (`- name: x` with the following lines indented), a sequence at the same
+  indentation as its key (`key:` and `- a` on the next line) and compact sequences and mappings (`- - a`, `- a: 1`).
+  Indentation is spaces only: a tab in the indentation is an error, as the specification says. A duplicate key in the
+  same mapping is an error (the specification forbids it too).
+- **Values**: plain (single- or multi-line; line breaks become spaces and blank lines,
+  `\n`); single-quoted (`''` is one quote); double-quoted, with every escape in the
+  specification (`\n`, `\t`, `\x41`, `\u00e9`, `\U0001F600`, `\N`, `\_`, `\L`, `\P`, escaped line break…);
+  block scalars, `|` (literal) and `>` (folded), with the chomping indicators `-` and `+` and the indentation indicators `1`–`9`.
+- **Flow collections** `[a, b]` and `{a: 1, b}`, also across several lines and nested,
+  with a single pair inside a sequence (`[a: 1]`) and a key without a value (`{a, b: 1}` has `a: null`).
+- **`#` comments** (with a space before them): those right above a key (no blank line
+  in between) and the one at the end of the line become the field's help; `a | b | c` becomes a list of options.
+- File in UTF-8, with or without BOM; LF or CRLF line breaks (kept on save). A lone CR and
+  control characters are rejected.
 
-No formulário: cada mapa em bloco é uma seção e cada lista de mapas um grupo (como em JSON);
-uma lista (em bloco ou em linha) com todos os itens do mesmo tipo simples aparece como
-etiquetas; mapas em linha (`{a: 1}`), listas mistas, listas de listas, valores vazios (`chave:`)
-e `null` aparecem como texto cru (YAML), igual ao TOML.
+In the form: each block mapping is a section and each sequence of mappings a group (as in JSON);
+a sequence (block or flow) whose items all have the same simple type shows as
+tokens; flow mappings (`{a: 1}`), mixed sequences, sequences of sequences, empty values (`key:`)
+and `null` show as raw text (YAML), just like in TOML.
 
-#### Tipos: o *core schema* do YAML 1.2
+#### Types: the YAML 1.2 *core schema*
 
-Um valor sem aspas tem o tipo que o *core schema* do YAML 1.2 diz, e só esses:
+A plain (unquoted) value has the type the YAML 1.2 *core schema* says, and only those:
 
-| texto sem aspas | tipo |
+| unquoted text | type |
 |---|---|
-| `true`, `True`, `TRUE`, `false`, `False`, `FALSE` | sim/não |
-| `null`, `Null`, `NULL`, `~` e o valor vazio | nulo |
-| `12`, `-3`, `+7`, `0x1F`, `0o17` | inteiro (`010` é dez) |
+| `true`, `True`, `TRUE`, `false`, `False`, `FALSE` | yes/no |
+| `null`, `Null`, `NULL`, `~` and the empty value | null |
+| `12`, `-3`, `+7`, `0x1F`, `0o17` | integer (`010` is ten) |
 | `1.5`, `.5`, `1.`, `1e3`, `-2.5E-3`, `.inf`, `-.Inf`, `.nan` | decimal |
-| todo o resto: `yes`, `no`, `on`, `off`, `y`, `n`, `0b101`, `1_000`, `12:30`, `2024-01-31`… | texto |
+| everything else: `yes`, `no`, `on`, `off`, `y`, `n`, `0b101`, `1_000`, `12:30`, `2024-01-31`… | text |
 
-Entre aspas ou em bloco, é sempre texto. Por que o 1.2 e não o 1.1: é a versão atual da norma
-(2009), a que o próprio YAML recomenda e a que a yaml-test-suite usa; o Konfig não tem como saber
-qual programa vai ler o arquivo, e o 1.2 é o que muda menos o que está escrito (`no` continua
-`no`). Datas não existem no 1.2: `2024-01-31` é texto.
+Quoted or in a block, it is always text. Why 1.2 and not 1.1: it is the current version of the
+specification (2009), the one YAML itself recommends and the one the yaml-test-suite uses; Konfig has no way of knowing
+which program will read the file, and 1.2 is the one that changes least of what is written (`no` stays
+`no`). Dates do not exist in 1.2: `2024-01-31` is text.
 
-#### Aspas de proteção (leitores YAML 1.1)
+#### Protective quotes (YAML 1.1 readers)
 
-Muitos programas ainda leem YAML pela regra antiga, a 1.1 (PyYAML e, com ele, Ansible e
-docker-compose em Python; o `yaml.v2` do Go; o Psych do Ruby): para eles `no`, `off` e `n` são
-**falso**, `on` e `yes` são verdadeiro, `010` é **oito** (octal), `1_000` é mil, `12:30` é 750
-(sexagesimal), `2024-01-31` é uma data. É o caso clássico da Noruega: `pais: NO` vira `pais: false`.
+Many programs still read YAML by the old rule, 1.1 (PyYAML and, with it, Ansible and
+the Python docker-compose; Go's `yaml.v2`; Ruby's Psych): for them `no`, `off` and `n` are
+**false**, `on` and `yes` are true, `010` is **eight** (octal), `1_000` is a thousand, `12:30` is 750
+(sexagesimal), `2024-01-31` is a date. This is the classic Norway problem: `country: NO` becomes `country: false`.
 
-Por isso, **ao gravar um texto sem aspas**, o Konfig põe aspas duplas quando o texto seria lido
-como outro tipo pelo YAML 1.2 **ou** pelo 1.1, mesmo que no 1.2 ele já seja texto:
+That is why, **when writing an unquoted string**, Konfig adds double quotes when the text would be read
+as another type by YAML 1.2 **or** by 1.1, even if in 1.2 it is already text:
 
-- sim/não e nulo do 1.1, em qualquer caixa: `y`, `n`, `yes`, `no`, `on`, `off`, `true`, `false`, `null`, `~`, vazio;
-- tudo o que começa com dígito (ou `.` e dígito, depois do sinal) e só tem dígitos, `.`, `:`,
-  `_`, `e`, `x`, `o`, `b`, sinais e letras de `a` a `f`: `1e3`, `010`, `0x1F`, `0b11`, `1_000`,
+- 1.1 yes/no and null, in any case: `y`, `n`, `yes`, `no`, `on`, `off`, `true`, `false`, `null`, `~`, empty;
+- anything that starts with a digit (or `.` and a digit, after the sign) and contains only digits, `.`, `:`,
+  `_`, `e`, `x`, `o`, `b`, signs and the letters `a` to `f`: `1e3`, `010`, `0x1F`, `0b11`, `1_000`,
   `12:30`, `8080:80`, `1.5`, `1.2.3`;
-- `.inf`, `-.inf`, `.nan`, datas (`2024-01-31…`), `<<` e `=`.
+- `.inf`, `-.inf`, `.nan`, dates (`2024-01-31…`), `<<` and `=`.
 
-A regra é de propósito larga: aspas a mais não mudam o valor para ninguém; aspas a menos mudam o
-tipo em algum programa. Ela vale só para o texto **gravado pelo Konfig**: um `pais: no` que já está
-no arquivo é lido como texto (YAML 1.2) e não é tocado se o campo não for editado.
+The rule is deliberately broad: extra quotes change the value for nobody; missing quotes change the
+type in some program. It only applies to text **written by Konfig**: a `country: no` already in
+the file is read as text (YAML 1.2) and is not touched if the field is not edited.
 
-#### Fora do subconjunto: abre só no modo Texto
+#### Outside the subset: opens in Text mode only
 
-Âncoras e aliases (`&base`, `*base`), mesclagem (`<<:`), etiquetas (`!!str`, `!Ref`, `!!binary`),
-vários documentos no arquivo, chaves complexas (`? chave`, `[a, b]: x`), chave vazia ou nula
-(`: x`, `~: x`) e diretivas (`%YAML`, `%TAG`) ficam de fora. Um arquivo com qualquer um deles **abre
-só no modo Texto**, com o aviso dizendo o que não é aceito e em que linha (por exemplo "linha 3:
-âncora (&) está fora do subconjunto que o Konfig edita pelo formulário"). O formulário fica
-indisponível; o texto pode ser editado e salvo, e é gravado como está (com o `.bak`), sem a
-releitura e conferência que o formulário faz. Se o texto ficar dentro do subconjunto, o formulário
-volta a funcionar; erro de sintaxe de verdade continua impedindo aplicar e salvar.
+Anchors and aliases (`&base`, `*base`), merge keys (`<<:`), tags (`!!str`, `!Ref`, `!!binary`),
+several documents in the file, complex keys (`? key`, `[a, b]: x`), empty or null keys
+(`: x`, `~: x`) and directives (`%YAML`, `%TAG`) are left out. A file with any of them **opens
+in Text mode only**, with a notice saying what is not accepted and on which line (for example "line 3:
+anchor (&) is outside the subset Konfig edits through the form"). The form is
+unavailable; the text can be edited and saved, and is written as is (with the `.bak`), without the
+re-parse and check the form does. If the text comes back inside the subset, the form
+works again; a real syntax error still prevents applying and saving.
 
-Por que abrir no modo Texto em vez de recusar: são arquivos YAML válidos e comuns (âncoras em
-docker-compose e GitHub Actions, `!Ref` no CloudFormation); recusar obrigaria a abrir em outro
-editor para mudar uma linha. Por que não no formulário: com um alias, mudar o valor da âncora
-mudaria vários lugares ao mesmo tempo, e uma etiqueta muda o tipo do valor — o formulário mostraria
-algo diferente do que o programa lê. O leitor nunca ignora esses recursos em silêncio: ao encontrar
-um deles, para e avisa. (Um arquivo inválido que também usa um desses recursos pode receber o
-mesmo aviso em vez do erro de sintaxe — na yaml-test-suite, 22 dos 94 casos inválidos; nos dois
-casos o formulário não abre.)
+Why open in Text mode instead of rejecting: these are valid and common YAML files (anchors in
+docker-compose and GitHub Actions, `!Ref` in CloudFormation); rejecting them would force opening another
+editor to change one line. Why not in the form: with an alias, changing the anchor's value
+would change several places at once, and a tag changes the value's type — the form would show
+something different from what the program reads. The parser never ignores these features silently: when it finds
+one of them, it stops and says so. (An invalid file that also uses one of these features may get the
+same notice instead of the syntax error — in the yaml-test-suite, 22 of the 94 invalid cases; in both
+cases the form does not open.)
 
-#### Gravação
+#### Writing
 
-- Só o trecho do valor alterado muda. O tipo de aspas se mantém: sem aspas continua sem aspas
-  quando cabe; aspas simples continuam simples; aspas duplas continuam duplas; bloco `|`/`>`
-  continua bloco, com o mesmo recuo, o mesmo indicador de recuo e o comentário do cabeçalho.
-- Precisa de aspas (duplas) o texto vazio ou com espaço nas pontas, com `: ` ou ` #`, terminado em
-  `:`, começado por indicador (`- `, `?`, `:`, `,`, `[`, `]`, `{`, `}`, `#`, `&`, `*`, `!`, `|`, `>`,
-  `'`, `"`, `%`, `@`, `` ` ``), com quebra de linha, tabulação ou controle — e os das
-  [aspas de proteção](#aspas-de-proteção-leitores-yaml-11). Dentro de `[ ]`, também com `,[]{}`.
-- Em bloco, o indicador de corte acompanha o texto novo: sem quebra no fim, `|-`; com uma, `|`;
-  com mais de uma, `|+`. Num `>`, cada quebra vira uma linha em branco; se alguma linha começar
-  com espaço (que o `>` não dobra), o bloco vira `|`. Se a primeira linha começar com espaço e não
-  houver indicador de recuo, ou o texto tiver controles, vai entre aspas duplas.
-- **Lista em bloco** que muda de tamanho: item a mais é uma linha nova (`- valor`) logo depois do
-  último item, com o recuo e o `- ` dele e as aspas do último item do mesmo tipo; item a menos é a
-  linha dele que sai (os comentários das outras linhas ficam). Lista que fica vazia vira `[]`.
-- **Lista em linha** que muda de tamanho: como no TOML e no JSON (reescrita com o estilo do
-  primeiro item; comentários dentro dela se perdem).
-- Número continua na mesma forma (`0x`, `0o`, `+`, expoente, casas decimais); `True` continua
-  com maiúscula; `.Inf` continua `.Inf`. YAML (core schema) não tem data: um valor de data é recusado.
-- Valor vazio (`chave:`) recebe um espaço antes do valor novo (`chave: novo`).
+- Only the bytes of the changed value change. The kind of quotes is kept: unquoted stays unquoted
+  when it fits; single quotes stay single; double quotes stay double; a `|`/`>` block
+  stays a block, with the same indentation, the same indentation indicator and the header comment.
+- Text needs (double) quotes when it is empty or has spaces at either end, contains `: ` or ` #`, ends with
+  `:`, starts with an indicator (`- `, `?`, `:`, `,`, `[`, `]`, `{`, `}`, `#`, `&`, `*`, `!`, `|`, `>`,
+  `'`, `"`, `%`, `@`, `` ` ``), or has a line break, tab or control character — plus the cases of the
+  [protective quotes](#protective-quotes-yaml-11-readers). Inside `[ ]`, also `,[]{}`.
+- In a block, the chomping indicator follows the new text: no trailing line break, `|-`; one, `|`;
+  more than one, `|+`. In a `>`, each line break becomes a blank line; if any line starts
+  with a space (which `>` does not fold), the block becomes `|`. If the first line starts with a space and there
+  is no indentation indicator, or the text has control characters, it goes in double quotes.
+- A **block sequence** that changes size: an extra item is a new line (`- value`) right after the
+  last item, with its indentation and `- ` and the quotes of the last item of the same type; a removed item is
+  its line taken out (the other lines' comments stay). A sequence that becomes empty becomes `[]`.
+- A **flow sequence** that changes size: as in TOML and JSON (rewritten in the style of the
+  first item; comments inside it are lost).
+- A number keeps the same form (`0x`, `0o`, `+`, exponent, decimal places); `True` stays
+  capitalized; `.Inf` stays `.Inf`. YAML (core schema) has no date type: a date value is rejected.
+- An empty value (`key:`) gets a space before the new value (`key: new`).
 
-Limitações: chaves não são reescritas (para renomear, use o modo Texto); comentários dentro de
-coleções em linha não viram ajuda; um texto sem aspas de várias linhas, ao ser editado, é gravado
-numa linha só; uma lista em bloco com itens compactos (`- - a`) que muda de tamanho é reescrita em
-linha; a coloração do modo Texto é por linha (um texto entre aspas de várias linhas fica colorido
-só na primeira).
+Limitations: keys are not rewritten (to rename, use Text mode); comments inside
+flow collections do not become help; a multi-line plain string, once edited, is written
+on a single line; a block sequence with compact items (`- - a`) that changes size is rewritten
+in flow style; Text mode coloring is per line (a multi-line quoted string is colored
+only on its first line).
 
-### Próximos formatos
+### Next formats
 
-A parte própria de cada formato fica em `Formato.swift` (qual leitor, qual escritor
-e o que o formato não aceita) e em um par `LeitorX.swift`/`FormatarX.swift`; `Gravar`,
-`Edicao`, `Campos` e a interface já são comuns. Para acrescentar um formato:
+The part specific to each format lives in `Format.swift` (which parser, which writer
+and what the format does not accept) and in an `XReader.swift`/`XFormat.swift` pair; `Writer`,
+`EditSession`, `Fields` and the user interface are already shared. To add a format:
 
-- **YAML completo** (âncoras, etiquetas, vários documentos): exigiria editar valores que
-  aparecem em vários lugares ao mesmo tempo; hoje esses arquivos abrem só no modo Texto.
+- **Full YAML** (anchors, tags, several documents): would require editing values that
+  appear in several places at once; today these files open in Text mode only.
 
-### Mudanças de nome no código (para quem usa o `ConfCore`)
+### Name changes in the code (for `ConfCore` users)
 
-Os nomes antigos continuam valendo como apelidos:
+**2026-10-11: English API.** For the open-source release, the whole public `ConfCore` API
+(and the rest of the code) was renamed to English. The old aliases `DocumentoTOML`,
+`ErroTOML` and `EdicaoTOML` were **removed**; code using the Portuguese names must switch to the new ones.
+The main ones:
 
-| antes | agora |
+| before | now |
 |---|---|
-| `DocumentoTOML` | `DocumentoConf` (com `formato`, `valorRaiz` e `nomeFormato`; `raiz` ainda é a `Tabela`) |
-| `EdicaoTOML(bytes)` | `Edicao(bytes, formato:)` (`.toml` por padrão) |
-| `ErroTOML` | `ErroLeitura` (com `formato`; a mensagem diz "TOML inválido" ou "JSON inválido") |
+| `DocumentoConf` (and the alias `DocumentoTOML`) | `ConfDocument` |
+| `ErroLeitura` (and the alias `ErroTOML`) | `ParseError` |
+| `Edicao` (and the alias `EdicaoTOML`) | `EditSession` |
+| `Formato` | `Format` |
+| `Valor` | `Value` |
+| `Caminho` | `ValuePath` |
+| `Tabela` | `Table` |
+| `DataHora` | `DateTime` |
+| `Entrada` | `Entry` |
+| `TipoCampo` | `FieldKind` |
+| `Leitor` | `TOMLReader` |
+| `LeitorJSON`, `LeitorEnv`, `LeitorINI`, `LeitorYAML` | `JSONReader`, `EnvReader`, `INIReader`, `YAMLReader` |
+| `FormatarJSON`, `FormatarEnv`, `FormatarINI`, `FormatarYAML` | `JSONFormat`, `EnvFormat`, `INIFormat`, `YAMLFormat` |
+| `Gravar` | `Writer` |
+| `Abertura` | `Preamble` |
 
-Também: `Formato` (`.toml`, `.json`, `.json5`, `.env`, `.ini`, `.yaml`; `ehJSON` para os dois JSON)
-despacha ler, ler um valor e escrever (`LeitorJSON.lerJSON5` para JSON5),
-e `Formato(nomeArquivo:)` escolhe pelo nome;
-`Gravar.aplicar(bytes, alteracoes:, formato:)`; `Valor.nulo`; `TipoCampo.cru.nome`
-é "texto cru" e `nome(em: formato)` dá "TOML" ou "JSON".
-Com o YAML: `ErroLeitura.foraDoSubconjunto` (arquivo válido que só pode ser editado como texto),
-`Edicao.somenteTexto` e `trocarTexto` aceitando esse texto, e `Formato.ajustarCru` (o texto cru
-digitado é ajustado ao lugar antes de gravar; nos outros formatos, não muda nada).
+Members followed the same rule (`formato` → `format`, `valorRaiz` → `rootValue`,
+`nomeFormato` → `formatName`, `raiz` → `root`, `ehJSON` → `isJSON`, `ler` → `parse`,
+`escrever` → `write`, `aplicar` → `apply`, `alteracoes` → `changes`, `nulo` → `null`,
+`cru` → `raw`, `foraDoSubconjunto` → `outsideSubset`, `somenteTexto` → `textOnly`,
+`trocarTexto` → `replaceText`, `ajustarCru` → `adjustRaw`…). Messages shown on screen
+are now localized (see [Localization](#localization)).
 
-## Organização
+**Earlier** (when the app started editing more than one format), shown with today's names:
+
+| before | after |
+|---|---|
+| `DocumentoTOML` | `ConfDocument` (with `format`, `rootValue` and `formatName`; `root` is still the `Table`) |
+| `EdicaoTOML(bytes)` | `EditSession(bytes, format:)` (`.toml` by default) |
+| `ErroTOML` | `ParseError` (with `format`; the message names the format, as in "invalid TOML" or "invalid JSON") |
+
+Also: `Format` (`.toml`, `.json`, `.json5`, `.env`, `.ini`, `.yaml`; `isJSON` for both JSONs)
+dispatches parsing a file, parsing a value and writing (`JSONReader.parseJSON5` for JSON5),
+and `Format(fileName:)` picks one from the file name;
+`Writer.apply(bytes, changes:, format:)`; `Value.null`; `FieldKind.raw.name`
+is "raw text" and `name(at: format)` gives "TOML" or "JSON".
+With YAML: `ParseError.outsideSubset` (a valid file that can only be edited as text),
+`EditSession.textOnly` and `replaceText` accepting such text, and `Format.adjustRaw` (raw text
+typed by the user is adjusted to its place before saving; in the other formats, it changes nothing).
+
+## Localization
+
+The user interface follows the macOS language: English by default, Portuguese (pt-BR) available. The strings
+live in `Resources/<lang>.lproj/Localizable.strings`, with the English text as the key
+(`NSLocalizedString("Apply", …)` in the code); document type names live in
+`InfoPlist.strings`, in the same folder. `build.sh` refuses to build if any key used in the
+source is missing from any language.
+
+To add a language:
+
+1. Copy `Resources/en.lproj` to `Resources/<lang>.lproj` (for example `es.lproj`).
+2. Translate the values (the right-hand side of `=`) in `Localizable.strings` and `InfoPlist.strings`;
+   leave the keys as they are.
+3. Add the language code to `CFBundleLocalizations` in `Info.plist`.
+
+## Organization
+
+Code, comments and identifiers are in English.
 
 ```
 Package.swift
-Sources/ConfCore/      leitores, modelo e gravação (sem interface)
-  Formato.swift        TOML, JSON, .env ou INI: qual leitor e qual escritor usar
-  Leitor.swift         TOML 1.0 → estrutura, com intervalo de bytes de cada valor
-  LeitorJSON.swift     JSON/JSONC/JSON5 → estrutura, com intervalos e comentários
-  Gravar.swift         troca só os trechos alterados, no estilo original (TOML)
-  FormatarJSON.swift   escreve valores JSON/JSON5 no estilo do original
-  LeitorEnv.swift      .env → estrutura, com intervalos e comentários
-  FormatarEnv.swift    escreve valores .env mantendo o tipo de aspas
-  LeitorINI.swift      INI → estrutura (seções, listas `chave[]`), com intervalos e comentários
-  FormatarINI.swift    escreve valores INI mantendo as aspas; acrescenta/tira linhas de listas
-  LeitorYAML.swift     YAML (subconjunto de configuração) → estrutura, com intervalos e comentários
-  FormatarYAML.swift   escreve valores YAML no estilo do original; aspas de proteção; listas em bloco
-  Campos.swift         estrutura → seções e campos da tela
-  Edicao.swift         estado de um arquivo aberto; diferença por linhas
-  Modelo.swift         tipos (Valor, DataHora, Entrada, DocumentoConf, …)
-Sources/Konfig/       o app (NSDocument + SwiftUI)
-Tests/ConfCoreTests/   suítes toml-test, JSONTestSuite e json5-tests (Fixtures/,
-                       licença MIT), tsconfig.json de exemplo, arquivos JSONC
+Info.plist             the app's (document types, CFBundleLocalizations)
+build.sh               checks the translations, builds and assembles Konfig.app
+Sources/ConfCore/      parsers, model and writing (no user interface)
+  Format.swift         TOML, JSON, JSON5, .env, INI or YAML: which parser and which writer to use
+  TOMLReader.swift     TOML 1.0 → structure, with the byte range of each value
+  JSONReader.swift     JSON/JSONC/JSON5 → structure, with ranges and comments
+  Writer.swift         replaces only the changed bytes, in the original style (TOML)
+  JSONFormat.swift     writes JSON/JSON5 values in the original's style
+  EnvReader.swift      .env → structure, with ranges and comments
+  EnvFormat.swift      writes .env values keeping the kind of quotes
+  INIReader.swift      INI → structure (sections, `key[]` arrays), with ranges and comments
+  INIFormat.swift      writes INI values keeping the quotes; adds/removes array lines
+  YAMLReader.swift     YAML (configuration subset) → structure, with ranges and comments
+  YAMLFormat.swift     writes YAML values in the original's style; protective quotes; block sequences
+  Fields.swift         structure → on-screen sections and fields
+  Preamble.swift       the comment at the top of the file ("About this file"): reading and rewriting
+  EditSession.swift    state of an open file; line-based diff
+  Model.swift          types (Value, DateTime, Entry, ConfDocument, …)
+Sources/Konfig/        the app (NSDocument + SwiftUI)
+  App.swift            app startup, menus, document controller, km-conf migration
+  Document.swift       the NSDocument and the window model: open, save, .bak, undo
+  WindowView.swift     the window: sidebar, form, "About this file", changes
+  FieldView.swift      one control per field type
+  TextModeView.swift   Text mode, with colors
+  SelfTest.swift       the self-test (KONFIG_SELFTEST, see below)
+Resources/             en.lproj and pt-BR.lproj (Localizable.strings, InfoPlist.strings)
+Tests/ConfCoreTests/   toml-test, JSONTestSuite and json5-tests suites (Fixtures/,
+                       MIT license), a sample tsconfig.json, JSONC files
                        (Fixtures/jsonc/), .env (Fixtures/env/), INI (Fixtures/ini/:
-                       próprios, .editorconfig do EditorConfig e trecho do php.ini,
-                       licenças MIT e BSD ao lado), yaml-test-suite (Fixtures/yaml/,
-                       licença MIT, ORIGEM.txt com o commit) e testes de gravação
-exemplos/config.toml
-exemplos/config.json
-exemplos/config.jsonc
-exemplos/settings.jsonc
-exemplos/config.json5
-exemplos/.env
-exemplos/config.ini    (com CRLF)
-exemplos/config.yaml   (no estilo de um docker-compose)
+                       hand-written, .editorconfig from EditorConfig and an excerpt of php.ini,
+                       MIT and BSD licenses alongside), yaml-test-suite (Fixtures/yaml/,
+                       MIT license, SOURCE.txt with the commit), PreambleTests and
+                       WriterTests (writing)
+icon/                  Konfig.icns, the konfig.svg drawing and make-icon.sh
+docs/ideas/            archived ideas (rust-multiformat-library.md: a multi-format Rust
+                       library, dropped)
+examples/config.toml
+examples/config.json
+examples/config.jsonc
+examples/settings.jsonc
+examples/config.json5
+examples/.env
+examples/config.ini    (with CRLF)
+examples/config.yaml   (in the style of a docker-compose file)
 ```
 
-### Diagnóstico sem teclado
+### Keyboard-free diagnostics
 
 ```sh
-KONFIG_AUTOTESTE="/tmp/x/config.toml|/tmp/x/saida" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/config.json|/tmp/x/saida-json" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-jsonc" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/settings.jsonc|/tmp/x/saida-settings" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/config.json5|/tmp/x/saida-json5" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/config.ini|/tmp/x/saida-ini" Konfig.app/Contents/MacOS/Konfig
-KONFIG_AUTOTESTE="/tmp/x/config.yaml|/tmp/x/saida-yaml" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.toml|/tmp/x/out" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.json|/tmp/x/out-json" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.jsonc|/tmp/x/out-jsonc" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/settings.jsonc|/tmp/x/out-settings" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.json5|/tmp/x/out-json5" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/.env|/tmp/x/out-env" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.ini|/tmp/x/out-ini" Konfig.app/Contents/MacOS/Konfig
+KONFIG_SELFTEST="/tmp/x/config.yaml|/tmp/x/out-yaml" Konfig.app/Contents/MacOS/Konfig
 ```
 
-O arquivo precisa ser uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
-`exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5`,
-`exemplos/.env`, `exemplos/config.ini` ou `exemplos/config.yaml` (o roteiro conta com os campos deles; a cópia do `.env` pode se
-chamar `.env`, `.env.local` ou `algo.env`; uma cópia do `config.jsonc` com nome
-`algo.json` testa o aviso "JSON com comentários"). Abre a **cópia** (ele é alterado e depois restaurado), altera três
-valores pelo mesmo caminho dos controles, salva, desfaz, testa o modo Texto e a
-recarga por mudança externa, e grava `relatorio.txt` e fotos da janela na pasta
-de saída. No INI, também acrescenta um item na lista `extensoes[]` (confere que é uma
-linha nova e nada mais) e desfaz; uma cópia do `config.ini` chamada `.editorconfig`
-confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`). No YAML, faz o mesmo com a lista
-em bloco `services.web.ports` e confere que um texto com âncora dá aviso de "fora do subconjunto"
-(não erro) no modo Texto.
+The file must be a copy of `examples/config.toml`, `examples/config.json`,
+`examples/config.jsonc`, `examples/settings.jsonc`, `examples/config.json5`,
+`examples/.env`, `examples/config.ini` or `examples/config.yaml` (the script relies on their fields; the copy of `.env` may be
+named `.env`, `.env.local` or `something.env`; a copy of `config.jsonc` named
+`something.json` tests the "JSON with comments" notice). It opens the **copy** (it is modified and then restored), changes three
+values through the same path as the controls, saves, undoes, tests Text mode and
+reloading after an external change, and writes `report.txt` and screenshots of the window to the output
+folder. For INI, it also adds an item to the `extensions[]` array (checking that it is a single
+new line and nothing else) and undoes it; a copy of `config.ini` named `.editorconfig`
+checks that ⌘S keeps the name (it does not save `.editorconfig.ini`). For YAML, it does the same with the
+block sequence `services.web.ports` and checks that a text with an anchor gives an "outside the subset" notice
+(not an error) in Text mode.
 
-## Vindo do km-conf
+## Coming from km-conf
 
-Até 11/10/2026 o app se chamava km-conf, com o identificador `br.com.kogut.km-conf`; agora é
-`br.com.kogut.konfig`, e os tipos `.jsonc`, `.json5`, `.env` e `.ini` passaram a
-`br.com.kogut.konfig.*`. Na primeira abertura, o Konfig copia as preferências guardadas pelo
-identificador antigo (posição e tamanho da janela, última pasta do painel de abrir). Não passam,
-porque o macOS os guarda por identificador fora das preferências: a lista de **Abrir Recente** e
-as associações feitas com **Alterar Tudo…** no Finder (refaça-as escolhendo o Konfig). Um
-`km-conf.app` antigo pode ser apagado; enquanto existir, aparece também em "Abrir com".
+Until 2026-10-11 the app was called km-conf, with the identifier `br.com.kogut.km-conf`; now it is
+`br.com.kogut.konfig`, and the `.jsonc`, `.json5`, `.env` and `.ini` types became
+`br.com.kogut.konfig.*`. On first launch, Konfig copies the preferences stored under the
+old identifier (window position and size, last folder of the open panel). Not carried over,
+because macOS stores them per identifier outside the preferences: the **Open Recent** list and
+the associations made with **Change All…** in the Finder (redo them choosing Konfig). An old
+`km-conf.app` can be deleted; while it exists, it also shows up in "Open With".
 
-## Licença
+## License
 
-[MIT](LICENSE), © 2026 Kogumelo Informática Ltda. Use, copie e modifique à
-vontade, mantendo o aviso de copyright. O código vem sem garantia. Os casos de teste
-de terceiros em `Tests/ConfCoreTests/Fixtures/` têm a licença de origem ao lado.
+[MIT](LICENSE), © 2026 Kogumelo Informática Ltda. Use, copy and modify it
+freely, keeping the copyright notice. The code comes with no warranty. The third-party
+test cases in `Tests/ConfCoreTests/Fixtures/` have their original license alongside.

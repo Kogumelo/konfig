@@ -1,3 +1,0 @@
-Casos copiados de https://github.com/toml-lang/toml-test
-commit ff49d109861c1ad25af53f687f2aef19ab650600 (2026-09-15), lista tests/files-toml-1.0.0.
-Licença MIT: ver LICENSE nesta pasta.

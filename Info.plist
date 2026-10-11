@@ -19,9 +19,10 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>pt-BR</string>
+	<string>en</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>pt-BR</string>
 	</array>
 	<key>LSMinimumSystemVersion</key>
@@ -31,12 +32,12 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 Kogumelo Informática Ltda. Licença MIT. Casos de teste do toml-test, da JSONTestSuite, do json5-tests e da yaml-test-suite sob licença MIT.</string>
+	<string>© 2026 Kogumelo Informática Ltda. MIT License. Test cases from toml-test, JSONTestSuite, json5-tests and yaml-test-suite under the MIT License.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Documento TOML</string>
+			<string>TOML Document</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -46,11 +47,11 @@
 				<string>public.toml</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Documento JSON</string>
+			<string>JSON Document</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -61,11 +62,11 @@
 				<string>br.com.kogut.konfig.jsonc</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Documento JSON5</string>
+			<string>JSON5 Document</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -75,11 +76,11 @@
 				<string>br.com.kogut.konfig.json5</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Variáveis de ambiente (.env)</string>
+			<string>Environment Variables (.env)</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -89,11 +90,11 @@
 				<string>br.com.kogut.konfig.env</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Configuração INI</string>
+			<string>INI Configuration</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -101,17 +102,17 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>br.com.kogut.konfig.ini</string>
-				<!-- tipo que o Xcode declara para .ini; quando o Xcode está instalado, é o que o sistema usa -->
+				<!-- type Xcode declares for .ini; when Xcode is installed, it is the one the system uses -->
 				<string>com.microsoft.ini</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 		<dict>
-			<!-- public.yaml é declarado pelo próprio macOS (extensões yaml e yml, derivado de
-			     public.text): não precisa de declaração importada. -->
+			<!-- public.yaml is declared by macOS itself (extensions yaml and yml, conforming to
+			     public.text): no imported declaration needed. -->
 			<key>CFBundleTypeName</key>
-			<string>Documento YAML</string>
+			<string>YAML Document</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -121,7 +122,7 @@
 				<string>public.yaml</string>
 			</array>
 			<key>NSDocumentClass</key>
-			<string>Documento</string>
+			<string>Document</string>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
@@ -130,7 +131,7 @@
 			<key>UTTypeIdentifier</key>
 			<string>public.toml</string>
 			<key>UTTypeDescription</key>
-			<string>Documento TOML</string>
+			<string>TOML Document</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.plain-text</string>
@@ -148,16 +149,16 @@
 			</dict>
 		</dict>
 		<dict>
-			<!-- O macOS não declara JSONC (a extensão .jsonc fica com um tipo "dinâmico").
-			     Declaração importada: se outro app declarar o tipo, a dele vale.
-			     Derivado de public.plain-text, e não de public.json: assim o Spotlight indexa o
-			     conteúdo (importador RichText; public.json fica sem importador) e o "Abrir com"
-			     oferece os editores de texto. Também evita que programas que só leem JSON
-			     estrito se ofereçam para abrir. Testado no macOS 26 (ver README). -->
+			<!-- macOS does not declare JSONC (the .jsonc extension gets a "dynamic" type).
+			     Imported declaration: if another app declares the type, its declaration wins.
+			     Conforms to public.plain-text, not public.json: that way Spotlight indexes the
+			     content (RichText importer; public.json has no importer) and "Open With"
+			     offers the text editors. It also keeps programs that only read strict JSON
+			     from offering to open it. Tested on macOS 26 (see README). -->
 			<key>UTTypeIdentifier</key>
 			<string>br.com.kogut.konfig.jsonc</string>
 			<key>UTTypeDescription</key>
-			<string>JSON com comentários (JSONC)</string>
+			<string>JSON with Comments (JSONC)</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.plain-text</string>
@@ -171,7 +172,7 @@
 			</dict>
 		</dict>
 		<dict>
-			<!-- JSON5 (spec.json5.org): mesmo raciocínio do JSONC. -->
+			<!-- JSON5 (spec.json5.org): same reasoning as JSONC. -->
 			<key>UTTypeIdentifier</key>
 			<string>br.com.kogut.konfig.json5</string>
 			<key>UTTypeDescription</key>
@@ -193,12 +194,12 @@
 			</dict>
 		</dict>
 		<dict>
-			<!-- O macOS não declara .env. A extensão só cobre "producao.env"; ".env" (sem
-			     extensão para o sistema) e ".env.local" são reconhecidos pelo nome, no app. -->
+			<!-- macOS does not declare .env. The extension only covers "production.env"; ".env" (no
+			     extension as far as the system is concerned) and ".env.local" are recognized by name, in the app. -->
 			<key>UTTypeIdentifier</key>
 			<string>br.com.kogut.konfig.env</string>
 			<key>UTTypeDescription</key>
-			<string>Variáveis de ambiente (.env)</string>
+			<string>Environment Variables (.env)</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.plain-text</string>
@@ -212,13 +213,13 @@
 			</dict>
 		</dict>
 		<dict>
-			<!-- O macOS não declara .ini (a extensão fica com um tipo "dinâmico"). Mesmo
-			     raciocínio do JSONC: derivado de public.plain-text. O ".editorconfig" (sem
-			     extensão para o sistema) é reconhecido pelo nome, no app. -->
+			<!-- macOS does not declare .ini (the extension gets a "dynamic" type). Same
+			     reasoning as JSONC: conforms to public.plain-text. ".editorconfig" (no
+			     extension as far as the system is concerned) is recognized by name, in the app. -->
 			<key>UTTypeIdentifier</key>
 			<string>br.com.kogut.konfig.ini</string>
 			<key>UTTypeDescription</key>
-			<string>Configuração INI</string>
+			<string>INI Configuration</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.plain-text</string>

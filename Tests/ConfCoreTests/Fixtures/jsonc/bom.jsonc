@@ -1,5 +1,5 @@
 ﻿{
-  // arquivo com BOM
-  "nome": "José", /* acento */
+  // file with BOM
+  "name": "José", /* accent */
   "n": 1.50,
 }

@@ -1,0 +1,42 @@
+// User settings, in the style of VS Code's settings.json (JSONC)
+{
+  // Editor
+  "editor.fontSize": 14,
+  "editor.fontFamily": "Menlo, Monaco, 'Courier New', monospace",
+  "editor.tabSize": 2, // spaces per tab
+  // off | on | wordWrapColumn | bounded
+  "editor.wordWrap": "off",
+  "editor.formatOnSave": true,
+  "editor.rulers": [80, 120],
+  /* none | boundary | selection | trailing | all */
+  "editor.renderWhitespace": "selection",
+
+  // Files
+  "files.autoSave": "afterDelay", // off | afterDelay | onFocusChange | onWindowChange
+  "files.autoSaveDelay": 1000,
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/*.bak": true,
+  },
+  "files.associations": {
+    "*.env.*": "dotenv",
+    "tsconfig*.json": "jsonc",
+  },
+
+  // Appearance
+  "workbench.colorTheme": "Default Dark Modern",
+  "window.zoomLevel": 0.5,
+
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "ms-python.black-formatter",
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": false,
+  },
+  "terminal.integrated.env.osx": {
+    "PATH": "/opt/homebrew/bin:${env:PATH}",
+  },
+}

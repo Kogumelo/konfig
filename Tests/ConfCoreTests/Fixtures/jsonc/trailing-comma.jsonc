@@ -1,0 +1,17 @@
+{
+  "list": [1, 2, 3,],
+  "multiLineList": [
+    "a",
+    "b",
+  ],
+  "object": {"x": 1, "y": 2,},
+  "multiLineObject": {
+    "x": 1,
+    "y": [true, false,],
+  },
+  "nested": [[1,], [2, 3,],],
+  "withComment": [
+    10, // ten
+    20, /* twenty */
+  ],
+}

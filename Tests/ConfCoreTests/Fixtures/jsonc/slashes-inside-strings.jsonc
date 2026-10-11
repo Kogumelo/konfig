@@ -1,0 +1,9 @@
+{
+  "url": "http://example.com/a", // the URL has // and is not a comment
+  "open": "/* this is not a comment",
+  "close": "nor this */",
+  "double": "// nor this",
+  "quotes": "end with \\\" and // after", /* a real comment */
+  "trailingBackslash": "c:\\folder\\", // text ending in a backslash
+  "glob": "src/**/*.ts"
+}

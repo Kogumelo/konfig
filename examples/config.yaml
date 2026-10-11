@@ -1,0 +1,54 @@
+# Konfig example in the style of a docker-compose.yml.
+# The comments above a key (or at the end of the line) become the field's help.
+---
+name: kogumelo-dashboard
+
+# Log detail level
+# debug | info | warning | error
+log_level: info
+
+services:
+  # Web server in front of the dashboard
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped  # no | always | on-failure | unless-stopped
+    # "host:container" ports in quotes: without them, a YAML 1.1 reader would read 8080:80 as a number
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      TZ: America/Sao_Paulo
+      # country code: "no" (Norway) in quotes, otherwise a YAML 1.1 reader takes it as "no" (false)
+      COUNTRY: "no"
+      DEBUG: false
+    command: ["nginx", "-g", "daemon off;"]
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost]
+      interval: 30s
+      retries: 3
+
+  database:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dashboard
+      POSTGRES_PASSWORD_FILE: /run/secrets/password
+    volumes:
+      - data:/var/lib/postgresql/data
+
+# Message on the maintenance page
+maintenance: |
+  The dashboard is under maintenance.
+  Please come back in a few minutes.
+
+# Scheduled tasks
+tasks:
+  - name: backup
+    cron: "0 3 * * *"
+    enabled: true
+  - name: cleanup
+    cron: "30 4 * * 0"
+    enabled: false
+
+# simultaneous connections to the database
+pool: 12
+limit_mb: 512.5

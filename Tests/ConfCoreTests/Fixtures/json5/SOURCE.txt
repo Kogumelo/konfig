@@ -1,0 +1,11 @@
+Cases copied from https://github.com/json5/json5-tests
+commit ceb24d4080137d70833f86c25659c1331b80a387 (2026-02-20).
+MIT license: see LICENSE in this folder (LICENSE.md in the original).
+
+The case files (.json, .json5, .js, .txt) were copied from every folder, including
+todo/; left out were README.md, .editorconfig and the .errorSpec files (error messages
+of the reference reader, which do not apply here). new-lines/.gitattributes came along:
+it keeps git from touching the CR and CRLF line breaks in those files.
+
+Suite rule (from its README): .json and .json5 must be accepted; .js (valid ES5 that
+JSON5 forbids) and .txt (invalid) must be rejected.

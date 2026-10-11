@@ -1,0 +1,25 @@
+// before the root
+/* block before the root */
+{ // after the {
+  // above the key
+  "a": 1, // end of line, after the comma
+  "b" /* between key and colon */ : /* between colon and value */ 2,
+  "c": 3 /* after the value, before the comma */,
+  /* block
+   * of several
+   * lines */
+  "d": "x",
+  "e": [ // after the [
+    1, // item
+    /* before the item */ 2,
+    3 // last item, no comma
+  ],
+  "f": { /* object with only a comment */ },
+  "g": [ /* array with only a comment */ ],
+  "h": {
+    // nested
+    "i": true /* end */
+  }
+  // before the }
+} // after the root
+/* block at the end of the file */

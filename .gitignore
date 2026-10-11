@@ -1,6 +1,6 @@
 .DS_Store
 
-# Artefatos de compilação — refeitos por ./build.sh
+# Build artifacts — recreated by ./build.sh
 *.app/
 .build/
 DerivedData/
