@@ -1,0 +1,8 @@
+Cases copied from https://github.com/nst/JSONTestSuite
+commit 1ef36fa01286573e846ac449e8683f8833c5b26a (2024-11-22), folder test_parsing.
+MIT license: see LICENSE in this folder.
+
+y_*  valid JSON: the reader must accept it.
+n_*  invalid JSON: the strict reader must reject it.
+i_*  the specification leaves it up to the reader; what Konfig does with
+     each one is in JSONTests.swift (casesI) and in the README.

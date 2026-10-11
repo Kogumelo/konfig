@@ -1,0 +1,43 @@
+// Example configuration in JSON5 (https://spec.json5.org)
+{
+  title: 'Kogumelo Dashboard', // Name shown at the top
+  version: 3,
+  description: 'Dashboard for the \
+Kogumelo and LanceWeb systems',
+
+  server: {
+    host: '0.0.0.0',
+    ports: [8080, 8443],
+    tls: true, // requires a certificate
+    // debug | info | warning | error
+    log_level: 'info',
+    permissions: 0x1ED, // 0755 in octal
+    timeout: .5, // seconds
+  },
+
+  database: {
+    /* firebird | postgres */
+    driver: "firebird",
+    pool: 12, // simultaneous connections
+    factor: +1.50,
+    row_limit: Infinity,
+    path: 'C:\\data\\database.fdb',
+    password_file: null,
+  },
+
+  tasks: [
+    {
+      name: 'backup',
+      // minute hour day month day-of-week
+      cron: '0 3 * * *',
+      enabled: true,
+      environment: { DESTINATION: '/mnt/backup', 'COMPRESSION-LEVEL': 6 },
+    },
+    {
+      name: 'clean-logs',
+      // minute hour day month day-of-week
+      cron: '0 4 * * 0',
+      enabled: false,
+    },
+  ],
+}

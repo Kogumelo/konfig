@@ -1,9 +1,0 @@
-{
-  "url": "http://exemplo.com/a", // a URL tem // e não é comentário
-  "abre": "/* isto não é comentário",
-  "fecha": "nem isto */",
-  "dupla": "// nem isto",
-  "aspas": "fim com \\\" e // depois", /* comentário de verdade */
-  "barraFinal": "c:\\pasta\\", // texto que termina em barra invertida
-  "glob": "src/**/*.ts"
-}

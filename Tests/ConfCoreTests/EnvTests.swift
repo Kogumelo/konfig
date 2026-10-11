@@ -7,320 +7,320 @@ import UniformTypeIdentifiers
 
 private func b(_ s: String) -> [UInt8] { Array(s.utf8) }
 private func s(_ b: [UInt8]) -> String { String(decoding: b, as: UTF8.self) }
-private func k(_ c: String) -> Caminho { [.chave(c)] }
+private func k(_ c: String) -> ValuePath { [.key(c)] }
 
-/// Aplica uma alteração num .env e devolve o texto novo.
-private func troca(_ texto: String, _ chave: String, _ v: String) throws -> String {
-    s(try Gravar.aplicar(b(texto), alteracoes: [k(chave): .valor(.texto(v))], formato: .env))
+/// Applies one change to a .env and returns the new text.
+private func swap(_ text: String, _ key: String, _ v: String) throws -> String {
+    s(try Writer.apply(b(text), changes: [k(key): .value(.text(v))], format: .env))
 }
 
-private func valores(_ doc: DocumentoConf) -> [String: String] {
+private func values(_ doc: ConfDocument) -> [String: String] {
     var r: [String: String] = [:]
-    for e in doc.entradas { if case .texto(let t) = e.valor { r[e.chaveEscrita] = t } }
+    for e in doc.entries { if case .text(let t) = e.value { r[e.writtenKey] = t } }
     return r
 }
 
-enum FixturesEnv {
-    static let pasta = Suite.pasta.appendingPathComponent("env")
-    static let todos: [String] = (try? FileManager.default.contentsOfDirectory(atPath: pasta.path))?
+enum EnvFixtures {
+    static let folder = Suite.folder.appendingPathComponent("env")
+    static let all: [String] = (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?
         .filter { $0.hasSuffix(".env") }.sorted() ?? []
-    static func bytes(_ nome: String) -> [UInt8] {
-        Array(try! Data(contentsOf: pasta.appendingPathComponent(nome)))
+    static func bytes(_ name: String) -> [UInt8] {
+        Array(try! Data(contentsOf: folder.appendingPathComponent(name)))
     }
 }
 
-private let raizProjeto = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+private let projectRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent()
 
-// MARK: - Regras de leitura
+// MARK: - Reading rules
 
-@Test func envTemAsFixtures() {
-    #expect(FixturesEnv.todos == ["aspas.env", "basico.env", "bom.env", "crlf.env"])
+@Test func envHasFixtures() {
+    #expect(EnvFixtures.all == ["basic.env", "bom.env", "crlf.env", "quotes.env"])
 }
 
-@Test func envRegrasBasicas() throws {
-    let doc = try LeitorEnv.ler(FixturesEnv.bytes("basico.env"))
-    let v = valores(doc)
-    #expect(v["APP_NOME"] == "Konfig")
-    #expect(v["APP_PORTA"] == "8080", "export na frente")
-    #expect(v["INDENTADA"] == "sim")
-    #expect(v["ESPACOS_NO_IGUAL"] == "valor com espacos", "espaços nas pontas não contam")
-    #expect(v["VAZIA"] == "")
-    #expect(v["VAZIA_COM_COMENTARIO"] == "")
-    #expect(v["COM_COMENTARIO"] == "abc")
-    #expect(v["CERQUILHA_COLADA"] == "abc", "sem aspas, # começa comentário mesmo colado (como dotenv)")
-    #expect(v["NIVEL_LOG"] == "info")
-    #expect(v["modo.ponto-e-traco_1"] == "ok")
-    #expect(v["export"] == "variavel chamada export")
+@Test func envBasicRules() throws {
+    let doc = try EnvReader.parse(EnvFixtures.bytes("basic.env"))
+    let v = values(doc)
+    #expect(v["APP_NAME"] == "Konfig")
+    #expect(v["APP_PORT"] == "8080", "export in front")
+    #expect(v["INDENTED"] == "yes")
+    #expect(v["SPACES_AROUND_EQUALS"] == "value with spaces", "leading/trailing spaces do not count")
+    #expect(v["EMPTY"] == "")
+    #expect(v["EMPTY_WITH_COMMENT"] == "")
+    #expect(v["WITH_COMMENT"] == "abc")
+    #expect(v["ATTACHED_HASH"] == "abc", "unquoted, # starts a comment even when attached (like dotenv)")
+    #expect(v["LOG_LEVEL"] == "info")
+    #expect(v["mode.dot-and-dash_1"] == "ok")
+    #expect(v["export"] == "variable named export")
     #expect(v["URL"] == "postgres://u:p@localhost:5432/db?ssl=true&x=1")
-    #expect(v["IGUAL_NO_VALOR"] == "a=b=c")
-    #expect(v["APOSTROFO_NO_MEIO"] == "it's")
-    #expect(doc.entradas.count == 14)
-    #expect(doc.cabecalhos.isEmpty)
-    #expect(doc.quebraDeLinha == "\n" && !doc.temBOM)
+    #expect(v["EQUALS_IN_VALUE"] == "a=b=c")
+    #expect(v["APOSTROPHE_IN_MIDDLE"] == "it's")
+    #expect(doc.entries.count == 14)
+    #expect(doc.headers.isEmpty)
+    #expect(doc.lineBreak == "\n" && !doc.hasBOM)
 
-    let e = doc.entrada(k("APP_NOME"))!
-    #expect(e.comentarioAcima == ["Nome do app"], "linha em branco separa o comentário do arquivo")
-    #expect(doc.entrada(k("COM_COMENTARIO"))?.comentarioFim == "comentário no fim")
-    #expect(doc.entrada(k("CERQUILHA_COLADA"))?.comentarioFim == "def")
-    #expect(doc.entrada(k("APP_PORTA"))?.comentarioAcima == [])
-    #expect(doc.entrada(k("APP_PORTA"))?.chaveEscrita == "APP_PORTA")
-    #expect(doc.texto(doc.entrada(k("ESPACOS_NO_IGUAL"))!.intervalo) == "valor com espacos")
+    let e = doc.entry(k("APP_NAME"))!
+    #expect(e.commentAbove == ["App name"], "a blank line separates the file comment")
+    #expect(doc.entry(k("WITH_COMMENT"))?.trailingComment == "comment at the end")
+    #expect(doc.entry(k("ATTACHED_HASH"))?.trailingComment == "def")
+    #expect(doc.entry(k("APP_PORT"))?.commentAbove == [])
+    #expect(doc.entry(k("APP_PORT"))?.writtenKey == "APP_PORT")
+    #expect(doc.text(doc.entry(k("SPACES_AROUND_EQUALS"))!.range) == "value with spaces")
 }
 
-@Test func envRegrasDeAspas() throws {
-    let doc = try LeitorEnv.ler(FixturesEnv.bytes("aspas.env"))
-    let v = valores(doc)
-    #expect(v["SIMPLES"] == #"literal \n sem escape"#)
-    #expect(v["SIMPLES_COM_HASH"] == "a # b")
-    #expect(doc.entrada(k("SIMPLES_COM_HASH"))?.comentarioFim == "comentário depois")
-    #expect(v["DUPLAS"] == "linha1\nlinha2")
-    #expect(v["DUPLAS_ESCAPES"] == "aspas \" e barra \\ e cr \r fim")
-    #expect(v["BARRA_DESCONHECIDA"] == #"c:\pasta\dados"#, "barra que não é escape fica")
-    #expect(v["EXPANSAO"] == "${HOME}/bin e $USER", "sem expansão")
-    #expect(v["EXPANSAO_SEM_ASPAS"] == "${HOME}/bin")
-    #expect(v["HASH_DENTRO"] == "senha#123")
-    #expect(v["VAZIA_DUPLAS"] == "" && v["VAZIA_SIMPLES"] == "")
-    #expect(v["ESPACOS_DENTRO"] == "  com espaços  ")
-    #expect(v["ACENTOS"] == "ação 😀")
-    #expect(v["VARIAS_LINHAS"] == "primeira\nsegunda\nterceira")
-    #expect(v["VARIAS_SIMPLES"] == "-----BEGIN-----\nabc\n-----END-----")
-    #expect(v["CRASE"] == "`texto`", "crase não é aspas")
-    #expect(v["DEPOIS"] == "fim")
-    let multi = doc.entrada(k("VARIAS_LINHAS"))!
-    #expect(multi.linhaFinal == multi.linha + 2)
-    #expect(doc.entrada(k("DEPOIS"))?.linha == 20)
+@Test func envQuoteRules() throws {
+    let doc = try EnvReader.parse(EnvFixtures.bytes("quotes.env"))
+    let v = values(doc)
+    #expect(v["SINGLE"] == #"literal \n no escape"#)
+    #expect(v["SINGLE_WITH_HASH"] == "a # b")
+    #expect(doc.entry(k("SINGLE_WITH_HASH"))?.trailingComment == "comment after")
+    #expect(v["DOUBLE"] == "line1\nline2")
+    #expect(v["DOUBLE_ESCAPES"] == "quotes \" and backslash \\ and cr \r end")
+    #expect(v["UNKNOWN_BACKSLASH"] == #"c:\folder\data"#, "a backslash that is not an escape stays")
+    #expect(v["EXPANSION"] == "${HOME}/bin and $USER", "no expansion")
+    #expect(v["EXPANSION_UNQUOTED"] == "${HOME}/bin")
+    #expect(v["HASH_INSIDE"] == "password#123")
+    #expect(v["EMPTY_DOUBLE"] == "" && v["EMPTY_SINGLE"] == "")
+    #expect(v["SPACES_INSIDE"] == "  with spaces  ")
+    #expect(v["ACCENTS"] == "ação 😀")
+    #expect(v["MULTI_LINE"] == "first\nsecond\nthird")
+    #expect(v["MULTI_SINGLE"] == "-----BEGIN-----\nabc\n-----END-----")
+    #expect(v["BACKTICK"] == "`text`", "a backtick is not a quote")
+    #expect(v["AFTER"] == "end")
+    let multi = doc.entry(k("MULTI_LINE"))!
+    #expect(multi.lastLine == multi.line + 2)
+    #expect(doc.entry(k("AFTER"))?.line == 20)
 }
 
-@Test func envCRLFeBOM() throws {
-    let crlf = try LeitorEnv.ler(FixturesEnv.bytes("crlf.env"))
-    #expect(crlf.quebraDeLinha == "\r\n")
-    #expect(valores(crlf) == ["A": "1", "B": "dois\npartes", "C": "tres", "MULTI": "x\ny", "D": "4"])
-    #expect(crlf.entrada(k("B"))?.comentarioAcima == ["ajuda de B"])
-    #expect(crlf.entrada(k("B"))?.comentarioFim == "fim")
-    #expect(crlf.entrada(k("A"))?.comentarioAcima == ["comentário"])
-    let bom = try LeitorEnv.ler(FixturesEnv.bytes("bom.env"))
-    #expect(bom.temBOM)
-    #expect(valores(bom) == ["NOME": "ação", "VAZIA": "", "ULTIMA": "sem quebra final"])
-    #expect(bom.entrada(k("NOME"))?.comentarioAcima == ["com BOM"])
+@Test func envCRLFAndBOM() throws {
+    let crlf = try EnvReader.parse(EnvFixtures.bytes("crlf.env"))
+    #expect(crlf.lineBreak == "\r\n")
+    #expect(values(crlf) == ["A": "1", "B": "two\nparts", "C": "three", "MULTI": "x\ny", "D": "4"])
+    #expect(crlf.entry(k("B"))?.commentAbove == ["help for B"])
+    #expect(crlf.entry(k("B"))?.trailingComment == "end")
+    #expect(crlf.entry(k("A"))?.commentAbove == ["comment"])
+    let bom = try EnvReader.parse(EnvFixtures.bytes("bom.env"))
+    #expect(bom.hasBOM)
+    #expect(values(bom) == ["NAME": "ação", "EMPTY": "", "LAST": "no final newline"])
+    #expect(bom.entry(k("NAME"))?.commentAbove == ["with BOM"])
 }
 
-@Test func envEscolhaPeloComentario() throws {
-    let doc = try LeitorEnv.ler(FixturesEnv.bytes("basico.env"))
-    let secoes = Campos.secoes(doc)
-    #expect(secoes.count == 1)
-    #expect(secoes[0].titulo == "Variáveis")
-    let campos = Dictionary(uniqueKeysWithValues: secoes[0].campos.map { ($0.id, $0) })
-    #expect(campos["NIVEL_LOG"]?.tipo == .escolha(["debug", "info", "aviso", "erro"]))
-    #expect(campos["NIVEL_LOG"]?.ajuda == "nível do log\ndebug | info | aviso | erro")
-    #expect(campos["APP_PORTA"]?.tipo == .texto, "em .env tudo é texto")
+@Test func envChoiceFromComment() throws {
+    let doc = try EnvReader.parse(EnvFixtures.bytes("basic.env"))
+    let sections = Fields.sections(doc)
+    #expect(sections.count == 1)
+    #expect(sections[0].title == "Variables")
+    let fields = Dictionary(uniqueKeysWithValues: sections[0].fields.map { ($0.id, $0) })
+    #expect(fields["LOG_LEVEL"]?.kind == .choice(["debug", "info", "warning", "error"]))
+    #expect(fields["LOG_LEVEL"]?.help == "log level\ndebug | info | warning | error")
+    #expect(fields["APP_PORT"]?.kind == .text, "in .env everything is text")
 }
 
 @Test(arguments: [
-    ("A", 1, 2, "falta '='"),
-    ("=1", 1, 1, "nome de uma variável"),
-    ("A 1", 1, 3, "esperava '='"),
-    ("A=1\nB=\"aberta\nC=3\n", 2, 3, "nunca fechadas"),
-    ("A='x\n", 1, 3, "nunca fechadas"),
-    ("A=\"x\" y\n", 1, 7, "depois das aspas"),
-    ("A=1\n\nA=2\n", 3, 1, "linha 1"),
-    ("export A\n", 1, 9, "falta '='"),
-    ("A=1\rB=2\n", 1, 4, "CR sozinho"),
-    ("ÇÃO=1\n", 1, 1, "nome de uma variável"),
+    ("A", 1, 2, "missing '='"),
+    ("=1", 1, 1, "a variable name"),
+    ("A 1", 1, 3, "expected '='"),
+    ("A=1\nB=\"open\nC=3\n", 2, 3, "never closed"),
+    ("A='x\n", 1, 3, "never closed"),
+    ("A=\"x\" y\n", 1, 7, "may follow the quotes"),
+    ("A=1\n\nA=2\n", 3, 1, "line 1"),
+    ("export A\n", 1, 9, "missing '='"),
+    ("A=1\rB=2\n", 1, 4, "lone CR"),
+    ("ÇÃO=1\n", 1, 1, "a variable name"),
 ])
-func envErrosComLinhaEColuna(_ caso: (String, Int, Int, String)) {
+func envErrorsWithLineAndColumn(_ testCase: (String, Int, Int, String)) {
     do {
-        let doc = try LeitorEnv.ler(caso.0)
-        Issue.record("aceitou \(caso.0.debugDescription): \(valores(doc))")
+        let doc = try EnvReader.parse(testCase.0)
+        Issue.record("accepted \(testCase.0.debugDescription): \(values(doc))")
     } catch {
-        #expect(error.linha == caso.1 && error.coluna == caso.2, "\(caso.0.debugDescription): \(error)")
-        #expect(error.mensagem.contains(caso.3), "\(error)")
-        #expect(error.formato == .env)
+        #expect(error.line == testCase.1 && error.column == testCase.2, "\(testCase.0.debugDescription): \(error)")
+        #expect(error.message.contains(testCase.3), "\(error)")
+        #expect(error.format == .env)
     }
 }
 
-@Test func envUTF8Invalido() {
-    #expect(throws: ErroLeitura.self) { try LeitorEnv.ler([0x41, 0x3D, 0xE7, 0x0A]) }
+@Test func envInvalidUTF8() {
+    #expect(throws: ParseError.self) { try EnvReader.parse([0x41, 0x3D, 0xE7, 0x0A]) }
 }
 
-@Test func envLerValor() throws {
-    #expect(try LeitorEnv.lerValor("abc") == .texto("abc"))
-    #expect(try LeitorEnv.lerValor(#""a\nb""#) == .texto("a\nb"))
-    #expect(try LeitorEnv.lerValor("'x y'") == .texto("x y"))
-    #expect(throws: ErroLeitura.self) { try LeitorEnv.lerValor("abc # x") }
-    #expect(throws: ErroLeitura.self) { try LeitorEnv.lerValor("\"abc") }
+@Test func envParseValue() throws {
+    #expect(try EnvReader.parseValue("abc") == .text("abc"))
+    #expect(try EnvReader.parseValue(#""a\nb""#) == .text("a\nb"))
+    #expect(try EnvReader.parseValue("'x y'") == .text("x y"))
+    #expect(throws: ParseError.self) { try EnvReader.parseValue("abc # x") }
+    #expect(throws: ParseError.self) { try EnvReader.parseValue("\"abc") }
 }
 
-// MARK: - Formato pelo nome do arquivo
+// MARK: - Format from the file name
 
-@Test func formatoPeloNome() {
-    #expect(Formato(nomeArquivo: ".env") == .env)
-    #expect(Formato(nomeArquivo: ".env.local") == .env)
-    #expect(Formato(nomeArquivo: ".env.production") == .env)
-    #expect(Formato(nomeArquivo: "producao.env") == .env)
-    #expect(Formato(nomeArquivo: "PRODUCAO.ENV") == .env)
-    #expect(Formato(nomeArquivo: "config.toml") == .toml)
-    #expect(Formato(nomeArquivo: "tsconfig.json") == .json)
-    #expect(Formato(nomeArquivo: "a.jsonc") == .json)
-    #expect(Formato(nomeArquivo: "environment.txt") == nil)
-    #expect(Formato(nomeArquivo: "leiame") == nil)
-    #expect(Formato(nomeArquivo: ".envrc") == nil)
+@Test func formatFromName() {
+    #expect(Format(fileName: ".env") == .env)
+    #expect(Format(fileName: ".env.local") == .env)
+    #expect(Format(fileName: ".env.production") == .env)
+    #expect(Format(fileName: "production.env") == .env)
+    #expect(Format(fileName: "PRODUCTION.ENV") == .env)
+    #expect(Format(fileName: "config.toml") == .toml)
+    #expect(Format(fileName: "tsconfig.json") == .json)
+    #expect(Format(fileName: "a.jsonc") == .json)
+    #expect(Format(fileName: "environment.txt") == nil)
+    #expect(Format(fileName: "readme") == nil)
+    #expect(Format(fileName: ".envrc") == nil)
 }
 
-/// O que o macOS devolve para os nomes de `.env`: por isso o formato vem do nome, não só da extensão.
-@Test func extensaoDoSistemaParaArquivosEnv() throws {
+/// What macOS returns for `.env` names: that is why the format comes from the name, not just the extension.
+@Test func systemExtensionForEnvFiles() throws {
     #expect(URL(fileURLWithPath: "/tmp/.env").pathExtension == "")
     #expect(URL(fileURLWithPath: "/tmp/.env.local").pathExtension == "local")
-    #expect(URL(fileURLWithPath: "/tmp/producao.env").pathExtension == "env")
+    #expect(URL(fileURLWithPath: "/tmp/production.env").pathExtension == "env")
     #if os(macOS)
-    // Tipo de arquivo que o sistema dá (sem o Konfig registrado): `.env` é "dados" genéricos.
-    let pasta = FileManager.default.temporaryDirectory.appendingPathComponent("konfig-env-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: pasta, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: pasta) }
-    var tipos: [String: String] = [:]
-    for n in [".env", ".env.local", "producao.env"] {
-        let u = pasta.appendingPathComponent(n)
+    // File type the system assigns (with Konfig not registered): `.env` is generic "data".
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("konfig-env-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    var kinds: [String: String] = [:]
+    for n in [".env", ".env.local", "production.env"] {
+        let u = folder.appendingPathComponent(n)
         try Data("A=1\n".utf8).write(to: u)
-        tipos[n] = try u.resourceValues(forKeys: [.contentTypeKey]).contentType?.identifier ?? "-"
+        kinds[n] = try u.resourceValues(forKeys: [.contentTypeKey]).contentType?.identifier ?? "-"
     }
-    #expect(tipos[".env"] == "public.data", "\(tipos)")
-    #expect(tipos[".env.local"]?.hasPrefix("dyn.") == true || tipos[".env.local"] == "br.com.kogut.konfig.env",
-            "\(tipos)")
+    #expect(kinds[".env"] == "public.data", "\(kinds)")
+    #expect(kinds[".env.local"]?.hasPrefix("dyn.") == true || kinds[".env.local"] == "br.com.kogut.konfig.env",
+            "\(kinds)")
     #endif
 }
 
-// MARK: - Gravar: aspas e estilo
+// MARK: - Saving: quotes and style
 
-@Test func envGravarMantemAspas() throws {
-    // sem aspas continua sem aspas quando cabe
-    #expect(try troca("A=1\n", "A", "2") == "A=2\n")
-    #expect(try troca("A=x # c\n", "A", "y") == "A=y # c\n")
-    // não cabe sem aspas: duplas
-    #expect(try troca("A=x # c\n", "A", "com espaço") == "A=\"com espaço\" # c\n")
-    #expect(try troca("A=x\n", "A", "a#b") == "A=\"a#b\"\n")
-    #expect(try troca("A=x\n", "A", "diz \"oi\"") == #"A="diz \"oi\"""# + "\n")
-    #expect(try troca("A=x\n", "A", "it's") == "A=\"it's\"\n")
-    #expect(try troca("A=x\n", "A", "a\nb") == #"A="a\nb""# + "\n")
-    // vazio
-    #expect(try troca("A=\n", "A", "v") == "A=v\n")
-    #expect(try troca("A=   # c\n", "A", "v") == "A=v   # c\n")
-    #expect(try troca("A=x # c\n", "A", "") == "A= # c\n")
-    #expect(try troca("A=x\n", "A", "") == "A=\n")
-    // simples continua simples; não cabe ('), vira duplas
-    #expect(try troca("A='x'\n", "A", "y z") == "A='y z'\n")
-    #expect(try troca("A='x'\n", "A", "a\\nb") == "A='a\\nb'\n")
-    #expect(try troca("A='x'\n", "A", "it's") == "A=\"it's\"\n")
-    #expect(try troca("A='x'\n", "A", "a\nb") == #"A="a\nb""# + "\n")
-    // simples de várias linhas continua de várias linhas, com a quebra do arquivo
-    #expect(try troca("A='x\r\ny'\r\n", "A", "x\ny\nz") == "A='x\r\ny\r\nz'\r\n")
-    // duplas continuam duplas, escapando só o necessário
-    #expect(try troca("A=\"x\"\n", "A", "y") == "A=\"y\"\n")
-    #expect(try troca("A=\"x\"\n", "A", "c:\\dir") == #"A="c:\\dir""# + "\n")
-    // duplas: começo e fim iguais copiados do original (escapes e barras desconhecidas inclusive)
-    #expect(try troca(#"A="a\nb fim\"""# + "\n", "A", "a\nb meio fim\"") == #"A="a\nb meio fim\"""# + "\n")
-    #expect(try troca(#"A="c:\pasta""# + "\n", "A", #"c:\outra"#) == #"A="c:\\outra""# + "\n")
-    // export e comentário ficam
-    #expect(try troca("export A=1 # c\n", "A", "2") == "export A=2 # c\n")
+@Test func envSaveKeepsQuotes() throws {
+    // unquoted stays unquoted when it fits
+    #expect(try swap("A=1\n", "A", "2") == "A=2\n")
+    #expect(try swap("A=x # c\n", "A", "y") == "A=y # c\n")
+    // does not fit unquoted: double quotes
+    #expect(try swap("A=x # c\n", "A", "with space") == "A=\"with space\" # c\n")
+    #expect(try swap("A=x\n", "A", "a#b") == "A=\"a#b\"\n")
+    #expect(try swap("A=x\n", "A", "say \"hi\"") == #"A="say \"hi\"""# + "\n")
+    #expect(try swap("A=x\n", "A", "it's") == "A=\"it's\"\n")
+    #expect(try swap("A=x\n", "A", "a\nb") == #"A="a\nb""# + "\n")
+    // empty
+    #expect(try swap("A=\n", "A", "v") == "A=v\n")
+    #expect(try swap("A=   # c\n", "A", "v") == "A=v   # c\n")
+    #expect(try swap("A=x # c\n", "A", "") == "A= # c\n")
+    #expect(try swap("A=x\n", "A", "") == "A=\n")
+    // single stays single; if it does not fit ('), it becomes double
+    #expect(try swap("A='x'\n", "A", "y z") == "A='y z'\n")
+    #expect(try swap("A='x'\n", "A", "a\\nb") == "A='a\\nb'\n")
+    #expect(try swap("A='x'\n", "A", "it's") == "A=\"it's\"\n")
+    #expect(try swap("A='x'\n", "A", "a\nb") == #"A="a\nb""# + "\n")
+    // multi-line single quotes stay multi-line, with the file's line break
+    #expect(try swap("A='x\r\ny'\r\n", "A", "x\ny\nz") == "A='x\r\ny\r\nz'\r\n")
+    // double stays double, escaping only what is needed
+    #expect(try swap("A=\"x\"\n", "A", "y") == "A=\"y\"\n")
+    #expect(try swap("A=\"x\"\n", "A", "c:\\dir") == #"A="c:\\dir""# + "\n")
+    // double: matching start and end copied from the original (escapes and unknown backslashes included)
+    #expect(try swap(#"A="a\nb end\"""# + "\n", "A", "a\nb middle end\"") == #"A="a\nb middle end\"""# + "\n")
+    #expect(try swap(#"A="c:\folder""# + "\n", "A", #"c:\other"#) == #"A="c:\\other""# + "\n")
+    // export and comment stay
+    #expect(try swap("export A=1 # c\n", "A", "2") == "export A=2 # c\n")
 }
 
-@Test func envSoTextoEhAceito() {
-    var ed = Edicao(b("A=1\n"), formato: .env)
-    #expect(throws: ErroGravar.self) { try ed.definir(k("A"), .valor(.inteiro(2))) }
-    #expect(throws: ErroGravar.self) { try ed.definir(k("A"), .valor(.nulo)) }
-    #expect(throws: ErroGravar.self) { try ed.definir(k("A"), .cru("x # y")) }
+@Test func envOnlyTextIsAccepted() {
+    var ed = EditSession(b("A=1\n"), format: .env)
+    #expect(throws: SaveError.self) { try ed.assign(k("A"), .value(.integer(2))) }
+    #expect(throws: SaveError.self) { try ed.assign(k("A"), .value(.null)) }
+    #expect(throws: SaveError.self) { try ed.assign(k("A"), .raw("x # y")) }
 }
 
-@Test func envEdicaoTrocarTexto() throws {
-    var ed = Edicao(b("A=1\n"), formato: .env)
-    #expect(throws: ErroLeitura.self) { try ed.trocarTexto(b("A=1\nB\n")) }
-    try ed.trocarTexto(b("A=1\nB=2\n"))
-    #expect(ed.documento?.entradas.count == 2)
+@Test func envSessionReplaceText() throws {
+    var ed = EditSession(b("A=1\n"), format: .env)
+    #expect(throws: ParseError.self) { try ed.replaceText(b("A=1\nB\n")) }
+    try ed.replaceText(b("A=1\nB=2\n"))
+    #expect(ed.document?.entries.count == 2)
 }
 
-// MARK: - Ida e volta e "só o trecho" (os mesmos testes do TOML em GravarTests)
+// MARK: - Round trip and "only the hunk" (the same tests as TOML in WriterTests)
 
-private let envEspeciais: [String: [UInt8]] = [
-    "vazio": [],
-    "so-comentarios": b("# nada\n\n# aqui\n"),
-    "sem-quebra-final": b("A=1\nB='dois'"),
-    "crlf-bom-aspas": [0xEF, 0xBB, 0xBF] + b("# c\r\nA=\"x\\ny\" # z\r\n\r\nexport B='q'\r\nC=\r\n"),
-    "indentado": b("  A = 1\n\tB=\t\"2\"\t# c\n"),
+private let envSpecials: [String: [UInt8]] = [
+    "empty": [],
+    "comments-only": b("# nothing\n\n# here\n"),
+    "no-final-newline": b("A=1\nB='two'"),
+    "crlf-bom-quotes": [0xEF, 0xBB, 0xBF] + b("# c\r\nA=\"x\\ny\" # z\r\n\r\nexport B='q'\r\nC=\r\n"),
+    "indented": b("  A = 1\n\tB=\t\"2\"\t# c\n"),
 ]
 
-private func casoEnv(_ nome: String) -> [UInt8] {
-    if let x = envEspeciais[nome] { return x }
-    if nome == "exemplos/.env" { return Array(try! Data(contentsOf: raizProjeto.appendingPathComponent(nome))) }
-    return FixturesEnv.bytes(nome)
+private func envCase(_ name: String) -> [UInt8] {
+    if let x = envSpecials[name] { return x }
+    if name == "examples/.env" { return Array(try! Data(contentsOf: projectRoot.appendingPathComponent(name))) }
+    return EnvFixtures.bytes(name)
 }
 
-private let casosEnv = FixturesEnv.todos + Array(envEspeciais.keys).sorted() + ["exemplos/.env"]
+private let envCases = EnvFixtures.all + Array(envSpecials.keys).sorted() + ["examples/.env"]
 
-@Test(arguments: casosEnv)
-func envSemAlteracaoMesmosBytes(_ caso: String) throws {
-    let original = casoEnv(caso)
-    var ed = Edicao(original, formato: .env)
-    #expect(ed.erro == nil, "\(String(describing: ed.erro))")
-    #expect(try ed.resultado() == original)
-    #expect(!ed.temAlteracoes)
-    for e in ed.documento?.entradas ?? [] {
-        try ed.definir(e.caminho, .valor(e.valor))
-        try ed.definir(e.caminho, .cru(ed.documento!.texto(e.intervalo)))
+@Test(arguments: envCases)
+func envNoChangeSameBytes(_ testCase: String) throws {
+    let original = envCase(testCase)
+    var ed = EditSession(original, format: .env)
+    #expect(ed.error == nil, "\(String(describing: ed.error))")
+    #expect(try ed.result() == original)
+    #expect(!ed.hasChanges)
+    for e in ed.document?.entries ?? [] {
+        try ed.assign(e.path, .value(e.value))
+        try ed.assign(e.path, .raw(ed.document!.text(e.range)))
     }
-    #expect(ed.alteracoes.isEmpty)
-    #expect(try ed.resultado() == original)
+    #expect(ed.changes.isEmpty)
+    #expect(try ed.result() == original)
 }
 
-@Test(arguments: casosEnv)
-func envMudarCadaValor(_ caso: String) throws {
-    let original = casoEnv(caso)
-    let doc = try LeitorEnv.ler(original)
-    for e in doc.entradas {
-        guard case .texto(let t) = e.valor else { Issue.record("valor que não é texto"); continue }
-        // três mudanças: cabe sem aspas, precisa de aspas e várias linhas
-        for novo in [t + "x", t + " x'\"#$\\", "linha1\nlinha2" + t] {
-            let saida: [UInt8]
-            do { saida = try Gravar.aplicar(original, alteracoes: [e.caminho: .valor(.texto(novo))], formato: .env) } catch {
-                Issue.record("\(caso) \(e.chaveEscrita): \(error)")
+@Test(arguments: envCases)
+func envChangeEachValue(_ testCase: String) throws {
+    let original = envCase(testCase)
+    let doc = try EnvReader.parse(original)
+    for e in doc.entries {
+        guard case .text(let t) = e.value else { Issue.record("value that is not text"); continue }
+        // three changes: fits unquoted, needs quotes, and multiple lines
+        for updated in [t + "x", t + " x'\"#$\\", "line1\nline2" + t] {
+            let output: [UInt8]
+            do { output = try Writer.apply(original, changes: [e.path: .value(.text(updated))], format: .env) } catch {
+                Issue.record("\(testCase) \(e.writtenKey): \(error)")
                 continue
             }
-            #expect(soOTrechoMudou(original, saida, e.intervalo), "\(caso) \(e.chaveEscrita): mudou fora do trecho")
-            let relido = try LeitorEnv.ler(saida)
-            #expect(relido.raiz == doc.raiz.substituindo(e.caminho, por: .texto(novo))!, "\(caso) \(e.chaveEscrita)")
-            #expect(relido.entradas.map(\.comentarioFim) == doc.entradas.map(\.comentarioFim))
-            #expect(relido.temBOM == doc.temBOM && relido.quebraDeLinha == doc.quebraDeLinha)
-            // o tipo de aspas se mantém quando o valor cabe nele
-            let antes = doc.bytes[e.intervalo].first, depois = relido.entrada(e.caminho).map { relido.bytes[$0.intervalo].first }
-            if novo == t + "x", antes == 0x22 || antes == 0x27 { #expect(depois == antes, "\(caso) \(e.chaveEscrita)") }
+            #expect(onlyTheHunkChanged(original, output, e.range), "\(testCase) \(e.writtenKey): changed outside the hunk")
+            let reparsed = try EnvReader.parse(output)
+            #expect(reparsed.root == doc.root.replacing(e.path, by: .text(updated))!, "\(testCase) \(e.writtenKey)")
+            #expect(reparsed.entries.map(\.trailingComment) == doc.entries.map(\.trailingComment))
+            #expect(reparsed.hasBOM == doc.hasBOM && reparsed.lineBreak == doc.lineBreak)
+            // the quote style is kept when the value fits in it
+            let before = doc.bytes[e.range].first, after = reparsed.entry(e.path).map { reparsed.bytes[$0.range].first }
+            if updated == t + "x", before == 0x22 || before == 0x27 { #expect(after == before, "\(testCase) \(e.writtenKey)") }
         }
     }
 }
 
-// MARK: - Exemplo
+// MARK: - Example
 
-@Test func exemploEnv() throws {
-    let original = Array(try Data(contentsOf: raizProjeto.appendingPathComponent("exemplos/.env")))
-    let doc = try LeitorEnv.ler(original)
-    let campos = Dictionary(uniqueKeysWithValues: Campos.secoes(doc).flatMap(\.campos).map { ($0.id, $0) })
-    #expect(campos["NIVEL_LOG"]?.tipo == .escolha(["debug", "info", "aviso", "erro"]))
-    #expect(campos["BANCO_DRIVER"]?.tipo == .escolha(["firebird", "postgres"]))
-    #expect(campos["APP_TITULO"]?.ajuda == "Nome que aparece no topo")
-    #expect(campos["BANCO_POOL"]?.ajuda == "conexões simultâneas")
-    #expect(campos["BACKUP_DESTINO"]?.valor == .texto("${HOME}/backup"))
+@Test func exampleEnv() throws {
+    let original = Array(try Data(contentsOf: projectRoot.appendingPathComponent("examples/.env")))
+    let doc = try EnvReader.parse(original)
+    let fields = Dictionary(uniqueKeysWithValues: Fields.sections(doc).flatMap(\.fields).map { ($0.id, $0) })
+    #expect(fields["LOG_LEVEL"]?.kind == .choice(["debug", "info", "warning", "error"]))
+    #expect(fields["DATABASE_DRIVER"]?.kind == .choice(["firebird", "postgres"]))
+    #expect(fields["APP_TITLE"]?.help == "Name shown at the top")
+    #expect(fields["DATABASE_POOL"]?.help == "simultaneous connections")
+    #expect(fields["BACKUP_DESTINATION"]?.value == .text("${HOME}/backup"))
 
-    var ed = Edicao(original, formato: .env)
-    try ed.definir(k("BANCO_POOL"), .valor(.texto("20")))
-    try ed.definir(k("NIVEL_LOG"), .valor(.texto("aviso")))
-    try ed.definir(k("APP_TITULO"), .valor(.texto("Painel Kogumelo 2")))
-    try ed.definir(k("BANCO_SENHA"), .valor(.texto("nova senha")))
-    let r = s(try ed.resultado())
-    #expect(r == s(original).replacingOccurrences(of: "BANCO_POOL=12 ", with: "BANCO_POOL=20 ")
-        .replacingOccurrences(of: "NIVEL_LOG=info", with: "NIVEL_LOG=aviso")
-        .replacingOccurrences(of: "\"Painel Kogumelo\"", with: "\"Painel Kogumelo 2\"")
-        .replacingOccurrences(of: "\"troque#esta senha\"", with: "\"nova senha\""))
-    #expect(Diferenca.linhas(original, b(r)).count == 4)
+    var ed = EditSession(original, format: .env)
+    try ed.assign(k("DATABASE_POOL"), .value(.text("20")))
+    try ed.assign(k("LOG_LEVEL"), .value(.text("warning")))
+    try ed.assign(k("APP_TITLE"), .value(.text("Kogumelo Dashboard 2")))
+    try ed.assign(k("DATABASE_PASSWORD"), .value(.text("new password")))
+    let r = s(try ed.result())
+    #expect(r == s(original).replacingOccurrences(of: "DATABASE_POOL=12 ", with: "DATABASE_POOL=20 ")
+        .replacingOccurrences(of: "LOG_LEVEL=info", with: "LOG_LEVEL=warning")
+        .replacingOccurrences(of: "\"Kogumelo Dashboard\"", with: "\"Kogumelo Dashboard 2\"")
+        .replacingOccurrences(of: "\"change#this password\"", with: "\"new password\""))
+    #expect(Diff.lines(original, b(r)).count == 4)
 }
 
-// MARK: - JSON: recuos variados (critério de ida e volta)
+// MARK: - JSON: assorted indentation (round-trip criterion)
 
 @Test(arguments: [
     "{\n  \"a\": 1,\n  \"b\": [1, 2],\n  \"c\": {\"d\": \"x\"}\n}\n",
@@ -329,29 +329,29 @@ func envMudarCadaValor(_ caso: String) throws {
     "{\"a\":1,\"b\":[1,2],\"c\":{\"d\":\"x\"}}",
     "{\r\n    \"a\": 1,\r\n    \"b\": [\r\n        1,\r\n        2\r\n    ],\r\n    \"c\": {\"d\": \"x\"}\r\n}\r\n",
 ])
-func jsonRecuosIdaEVolta(_ texto: String) throws {
-    let original = b(texto)
-    let ed = Edicao(original, formato: .json)
-    #expect(try ed.resultado() == original)
-    let doc = try LeitorJSON.ler(original)
-    for e in doc.entradas {
-        guard let novo = mutado(e.valor), Formato.json.problema(novo) == nil else { continue }
-        let saida = try Gravar.aplicar(doc, alteracoes: [e.caminho: .valor(novo)])
-        #expect(soOTrechoMudou(original, saida, e.intervalo), "\(e.caminho.texto)")
-        #expect(try LeitorJSON.ler(saida).valorRaiz.valor(em: e.caminho) == novo)
+func jsonIndentRoundTrip(_ text: String) throws {
+    let original = b(text)
+    let ed = EditSession(original, format: .json)
+    #expect(try ed.result() == original)
+    let doc = try JSONReader.parse(original)
+    for e in doc.entries {
+        guard let updated = mutated(e.value), Format.json.problem(updated) == nil else { continue }
+        let output = try Writer.apply(doc, changes: [e.path: .value(updated)])
+        #expect(onlyTheHunkChanged(original, output, e.range), "\(e.path.text)")
+        #expect(try JSONReader.parse(output).rootValue.value(at: e.path) == updated)
     }
 }
 
-@Test func exemploJSON() throws {
-    let original = Array(try Data(contentsOf: raizProjeto.appendingPathComponent("exemplos/config.json")))
-    let doc = try LeitorJSON.ler(original, estrito: true)
-    #expect(doc.nomeFormato == "JSON")
-    var ed = Edicao(original, formato: .json)
-    try ed.definir([.chave("banco"), .chave("pool")], .valor(.inteiro(20)))
-    try ed.definir([.chave("banco"), .chave("fator")], .valor(.decimal(2)))
-    try ed.definir([.chave("banco"), .chave("limite")], .valor(.decimal(2500)))
-    let r = s(try ed.resultado())
+@Test func exampleJSON() throws {
+    let original = Array(try Data(contentsOf: projectRoot.appendingPathComponent("examples/config.json")))
+    let doc = try JSONReader.parse(original, strict: true)
+    #expect(doc.formatName == "JSON")
+    var ed = EditSession(original, format: .json)
+    try ed.assign([.key("database"), .key("pool")], .value(.integer(20)))
+    try ed.assign([.key("database"), .key("factor")], .value(.decimal(2)))
+    try ed.assign([.key("database"), .key("limit")], .value(.decimal(2500)))
+    let r = s(try ed.result())
     #expect(r == s(original).replacingOccurrences(of: "\"pool\": 12,", with: "\"pool\": 20,")
-        .replacingOccurrences(of: "\"fator\": 1.50,", with: "\"fator\": 2.00,")
-        .replacingOccurrences(of: "\"limite\": 1e3,", with: "\"limite\": 2.5e3,"))
+        .replacingOccurrences(of: "\"factor\": 1.50,", with: "\"factor\": 2.00,")
+        .replacingOccurrences(of: "\"limit\": 1e3,", with: "\"limit\": 2.5e3,"))
 }

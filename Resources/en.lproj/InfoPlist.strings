@@ -1,0 +1,3 @@
+/* English is the development language: Info.plist already holds the English values. */
+
+"CFBundleName" = "Konfig";

@@ -1,5 +1,5 @@
-﻿/* BOM e CRLF */
+﻿/* BOM and CRLF */
 {
-  "a": true, // fim
+  "a": true, // end
   "b": [ "x", "y", ],
 }

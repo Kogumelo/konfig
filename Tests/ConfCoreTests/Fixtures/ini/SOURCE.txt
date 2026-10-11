@@ -1,0 +1,27 @@
+INI test files.
+
+Our own (written for Konfig, one dialect rule per line):
+  rules.ini, arrays.ini, bom-crlf.ini
+
+Third-party (copied unchanged, except for the line excerpt of php.ini):
+
+  editorconfig-core-js.editorconfig
+    .editorconfig from https://github.com/editorconfig/editorconfig-core-js
+    commit 71d4a0a5ee9b3ee3e07c82c456965697395fbbc0
+    MIT License: see LICENSE-editorconfig-core-js.
+
+  editorconfig-core-go.editorconfig
+    .editorconfig from https://github.com/editorconfig/editorconfig-core-go
+    commit 410d66489641197f03eacb3dd6c65b4e1ff899a8
+    MIT License: see LICENSE-editorconfig-core-go.
+
+    (The main repository, github.com/editorconfig/editorconfig, has no license
+    file; that is why the .editorconfig files of these two were used instead,
+    which belong to the same EditorConfig project and are MIT-licensed.)
+
+  php.ini-production-excerpt.ini
+    Lines 1-30, 180-232, 320-335, 476-530, 640-720, 890-1000 and 1270-1440 of
+    php.ini-production from https://github.com/php/php-src
+    commit abefc9fe7fdc17b8f7ee9147091bba924a10659a
+    3-clause BSD License (Copyright The PHP Group and Zend Technologies):
+    see LICENSE-php-src.

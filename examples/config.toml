@@ -1,0 +1,28 @@
+# Example configuration
+title = "Kogumelo Dashboard"  # Name shown at the top
+version = 3
+
+[server]
+host = "0.0.0.0"
+ports = [ 8080, 8443 ]
+tls = true  # requires a certificate
+# debug | info | warning | error
+log_level = "info"
+
+[database]
+# firebird | postgres
+driver = "firebird"
+pool = 12  # simultaneous connections
+expires = 2026-12-31T23:59:00  # local date-time, no time zone
+
+[[tasks]]
+name = "backup"
+# minute hour day month day-of-week
+cron = "0 3 * * *"
+enabled = true
+
+[[tasks]]
+name = "clean-logs"
+# minute hour day month day-of-week
+cron = "0 4 * * 0"
+enabled = false

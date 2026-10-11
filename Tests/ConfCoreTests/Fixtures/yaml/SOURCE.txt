@@ -1,0 +1,9 @@
+Cases copied from https://github.com/yaml/yaml-test-suite (MIT license: see LICENSE in this folder),
+data release data-2022-01-17, commit 6e6c296ae9c9d2d5c4134b4b64d01b29ac19ff6f.
+License copied from the main branch, commit da267a5c4782e7361e82889e76c0dc7df0e1e870.
+
+One directory per case (cases with variants have subdirectories 00, 01…), holding only the files
+the tests use: in.yaml (input), in.json (expected value), error (the case must be
+rejected), === (case name) and test.event (parser events, used to split the cases
+inside and outside the subset Konfig accepts). The release's name/ and tags/ folders (just
+shortcuts to the same cases) were not copied.

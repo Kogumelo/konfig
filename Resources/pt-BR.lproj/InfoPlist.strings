@@ -1,0 +1,13 @@
+/* Português (Brasil). Keys are the English values in Info.plist. */
+
+"CFBundleName" = "Konfig";
+"NSHumanReadableCopyright" = "© 2026 Kogumelo Informática Ltda. Licença MIT. Casos de teste do toml-test, da JSONTestSuite, do json5-tests e da yaml-test-suite sob licença MIT.";
+
+/* Document type names (CFBundleTypeName) and imported type descriptions (UTTypeDescription) */
+"TOML Document" = "Documento TOML";
+"JSON Document" = "Documento JSON";
+"JSON5 Document" = "Documento JSON5";
+"YAML Document" = "Documento YAML";
+"Environment Variables (.env)" = "Variáveis de ambiente (.env)";
+"INI Configuration" = "Configuração INI";
+"JSON with Comments (JSONC)" = "JSON com comentários (JSONC)";

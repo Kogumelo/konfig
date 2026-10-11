@@ -1,0 +1,37 @@
+// Example configuration (JSONC: JSON with comments and trailing commas)
+{
+  "title": "Kogumelo Dashboard", // Name shown at the top
+  "version": 3,
+
+  "server": {
+    "host": "0.0.0.0",
+    "ports": [8080, 8443],
+    "tls": true, // requires a certificate
+    // debug | info | warning | error
+    "log_level": "info",
+  },
+
+  "database": {
+    /* firebird | postgres */
+    "driver": "firebird",
+    "pool": 12, // simultaneous connections
+    "factor": 1.50,
+    "password_file": null,
+  },
+
+  "tasks": [
+    {
+      "name": "backup",
+      // minute hour day month day-of-week
+      "cron": "0 3 * * *",
+      "enabled": true,
+      "environment": { "DESTINATION": "\/mnt\/backup" },
+    },
+    {
+      "name": "clean-logs",
+      // minute hour day month day-of-week
+      "cron": "0 4 * * 0",
+      "enabled": false,
+    },
+  ],
+}

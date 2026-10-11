@@ -5,7 +5,7 @@ var products: [Product] = [
     .library(name: "ConfCore", targets: ["ConfCore"]),
 ]
 var targets: [Target] = [
-    // Leitores, modelo e gravação de TOML 1.0 e JSON/JSONC — sem interface, testável.
+    // Readers, model and writers for TOML, JSON/JSONC/JSON5, .env, INI and YAML — no UI, testable.
     .target(name: "ConfCore"),
     .testTarget(
         name: "ConfCoreTests",
@@ -15,10 +15,10 @@ var targets: [Target] = [
 ]
 
 #if os(macOS)
-// O app (AppKit + SwiftUI) só existe no Mac; no Linux, `swift test` compila só o núcleo.
+// The app (AppKit + SwiftUI) only exists on the Mac; on Linux, `swift test` builds just the core.
 products.append(.executable(name: "Konfig", targets: ["Konfig"]))
 targets.append(
-    // Modo de linguagem 5: NSDocument ainda não tem anotações de concorrência completas.
+    // Language mode 5: NSDocument still lacks complete concurrency annotations.
     .executableTarget(
         name: "Konfig",
         dependencies: ["ConfCore"],

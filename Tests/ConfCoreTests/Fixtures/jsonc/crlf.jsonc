@@ -1,8 +1,8 @@
 {
-  // comentário com CRLF
-  "a": "x", // fim
-  /* bloco
-     em duas linhas */
+  // comment with CRLF
+  "a": "x", // end
+  /* block
+     on two lines */
   "b": [
     1,
     2,

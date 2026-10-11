@@ -2,245 +2,241 @@ import Foundation
 import Testing
 @testable import ConfCore
 
-/// Casos da suíte oficial yaml-test-suite (release data-2022-01-17), em `Fixtures/yaml/`.
+/// Cases from the official yaml-test-suite (release data-2022-01-17), in `Fixtures/yaml/`.
 ///
-/// Cada caso é classificado pelos eventos do parser de referência (`test.event`) e pelo texto:
-/// - **erro**: a suíte diz que o YAML é inválido (arquivo `error`) — precisa ser recusado;
-/// - **fora** do subconjunto: âncora, alias, etiqueta, vários documentos, diretiva, chave
-///   complexa (`? ` ou coleção como chave), chave vazia ou nula, mesclagem `<<` — precisa ser
-///   recusado (de preferência com `foraDoSubconjunto`) ou lido igual ao `in.json`;
-/// - **dentro**: o resto — precisa ser lido igual ao `in.json`.
-enum SuiteYAML {
-    static let pasta = Suite.pasta.appendingPathComponent("yaml")
+/// Each case is classified by the reference parser's events (`test.event`) and by its text:
+/// - **error**: the suite says the YAML is invalid (`error` file) — must be rejected;
+/// - **outside** the subset: anchor, alias, tag, multiple documents, directive, complex
+///   key (`? ` or a collection as key), empty or null key, `<<` merge — must be
+///   rejected (preferably with `outsideSubset`) or read the same as `in.json`;
+/// - **inside**: everything else — must be read the same as `in.json`.
+enum YAMLSuite {
+    static let folder = Suite.folder.appendingPathComponent("yaml")
 
-    static let casos: [String] = {
-        let e = FileManager.default.enumerator(at: pasta, includingPropertiesForKeys: nil)!
-        var r: [String] = []
-        for case let u as URL in e where u.lastPathComponent == "in.yaml" {
-            r.append(String(u.deletingLastPathComponent().path.dropFirst(pasta.path.count + 1)))
-        }
-        return r.sorted()
-    }()
+    static let cases: [String] = ((try? FileManager.default.subpathsOfDirectory(atPath: folder.path)) ?? [])
+        .filter { ($0 as NSString).lastPathComponent == "in.yaml" }
+        .map { ($0 as NSString).deletingLastPathComponent }
+        .sorted()
 
-    static func arquivo(_ caso: String, _ nome: String) -> Data? {
-        try? Data(contentsOf: pasta.appendingPathComponent(caso).appendingPathComponent(nome))
+    static func file(_ testCase: String, _ name: String) -> Data? {
+        try? Data(contentsOf: folder.appendingPathComponent(testCase).appendingPathComponent(name))
     }
 
-    static func bytes(_ caso: String) -> [UInt8] { [UInt8](arquivo(caso, "in.yaml")!) }
+    static func bytes(_ testCase: String) -> [UInt8] { [UInt8](file(testCase, "in.yaml")!) }
 
-    enum Classe: String { case erro, fora, dentro }
+    enum Category: String { case error, outside, inside }
 
-    /// Por que o caso está fora do subconjunto (`nil` se está dentro).
-    static func motivoFora(_ caso: String) -> String? {
-        let eventos = String(decoding: arquivo(caso, "test.event") ?? Data(), as: UTF8.self)
+    /// Why the case is outside the subset (`nil` if it is inside).
+    static func outsideReason(_ testCase: String) -> String? {
+        let events = String(decoding: file(testCase, "test.event") ?? Data(), as: UTF8.self)
             .split(separator: "\n").map(String.init)
-        let yaml = String(decoding: bytes(caso), as: UTF8.self)
-        if eventos.filter({ $0.hasPrefix("+DOC") }).count > 1 { return "vários documentos" }
-        if eventos.contains(where: { $0.hasPrefix("=ALI") }) { return "alias" }
-        // pilha: em cada mapa, os filhos alternam chave e valor
-        var pilha: [(mapa: Bool, n: Int)] = []
-        for ev in eventos {
-            let partes = ev.split(separator: " ", maxSplits: 1).map(String.init)
-            let tipo = partes[0]
-            let resto = partes.count > 1 ? partes[1] : ""
-            if ["+MAP", "+SEQ", "=VAL"].contains(tipo) {
-                var props = resto
-                if tipo == "+MAP" || tipo == "+SEQ" { props = props.replacingOccurrences(of: "{}", with: "").replacingOccurrences(of: "[]", with: "") }
-                // propriedades vêm antes do valor: `&ancora`, `<etiqueta>`
+        let yaml = String(decoding: bytes(testCase), as: UTF8.self)
+        if events.filter({ $0.hasPrefix("+DOC") }).count > 1 { return "multiple documents" }
+        if events.contains(where: { $0.hasPrefix("=ALI") }) { return "alias" }
+        // stack: in each map, the children alternate between key and value
+        var stack: [(map: Bool, n: Int)] = []
+        for ev in events {
+            let parts = ev.split(separator: " ", maxSplits: 1).map(String.init)
+            let kind = parts[0]
+            let rest = parts.count > 1 ? parts[1] : ""
+            if ["+MAP", "+SEQ", "=VAL"].contains(kind) {
+                var props = rest
+                if kind == "+MAP" || kind == "+SEQ" { props = props.replacingOccurrences(of: "{}", with: "").replacingOccurrences(of: "[]", with: "") }
+                // properties come before the value: `&anchor`, `<tag>`
                 var r = Substring(props)
                 while r.hasPrefix(" ") { r = r.dropFirst() }
                 while r.hasPrefix("&") || r.hasPrefix("<") {
-                    if r.hasPrefix("&") { return "âncora" }
-                    return "etiqueta"
+                    if r.hasPrefix("&") { return "anchor" }
+                    return "tag"
                 }
-                let ehChave = pilha.last.map { $0.mapa && $0.n % 2 == 0 } ?? false
-                if ehChave {
-                    if tipo != "=VAL" { return "chave complexa" }
+                let isKey = stack.last.map { $0.map && $0.n % 2 == 0 } ?? false
+                if isKey {
+                    if kind != "=VAL" { return "complex key" }
                     if r.hasPrefix(":") {
                         let k = String(r.dropFirst())
-                        if k == "<<" { return "mesclagem" }
-                        if case .nulo = LeitorYAML.resolver(k) { return "chave vazia ou nula" }
+                        if k == "<<" { return "merge" }
+                        if case .null = YAMLReader.resolver(k) { return "empty or null key" }
                     }
                 }
-                if !pilha.isEmpty { pilha[pilha.count - 1].n += 1 }
-                if tipo != "=VAL" { pilha.append((tipo == "+MAP", 0)) }
-            } else if tipo == "-MAP" || tipo == "-SEQ" {
-                pilha.removeLast()
+                if !stack.isEmpty { stack[stack.count - 1].n += 1 }
+                if kind != "=VAL" { stack.append((kind == "+MAP", 0)) }
+            } else if kind == "-MAP" || kind == "-SEQ" {
+                stack.removeLast()
             }
         }
         for l in yaml.split(separator: "\n", omittingEmptySubsequences: false) {
-            if l.hasPrefix("%") { return "diretiva" }
+            if l.hasPrefix("%") { return "directive" }
             let t = l.drop { $0 == " " || $0 == "-" || $0 == "\t" }
-            if t == "?" || t.hasPrefix("? ") || t.hasPrefix("?\t") { return "chave complexa" }
-            if l.contains("[? ") || l.contains("{? ") || l.contains(", ? ") { return "chave complexa" }
+            if t == "?" || t.hasPrefix("? ") || t.hasPrefix("?\t") { return "complex key" }
+            if l.contains("[? ") || l.contains("{? ") || l.contains(", ? ") { return "complex key" }
         }
         return nil
     }
 
-    static func classe(_ caso: String) -> Classe {
-        if arquivo(caso, "error") != nil { return .erro }
-        return motivoFora(caso) == nil ? .dentro : .fora
+    static func category(_ testCase: String) -> Category {
+        if file(testCase, "error") != nil { return .error }
+        return outsideReason(testCase) == nil ? .inside : .outside
     }
 
-    static let dentro = casos.filter { classe($0) == .dentro }
-    static let fora = casos.filter { classe($0) == .fora }
-    static let erros = casos.filter { classe($0) == .erro }
+    static let inside = cases.filter { category($0) == .inside }
+    static let outside = cases.filter { category($0) == .outside }
+    static let errors = cases.filter { category($0) == .error }
 
-    /// Casos dentro do subconjunto que o Konfig recusa, cada um com o motivo. Precisa
-    /// continuar vazio ou com motivo documentado (o teste confere os dois sentidos).
-    static let recusadosDentro: [String: String] = [:]
+    /// Cases inside the subset that Konfig rejects, each with its reason. Must stay
+    /// empty or with a documented reason (the test checks both directions).
+    static let rejectedInside: [String: String] = [:]
 
-    /// Valor esperado do `in.json`. `nil` se o caso não tem (a suíte não dá JSON para ele).
-    static func esperado(_ caso: String) -> Any?? {
-        guard let d = arquivo(caso, "in.json") else { return .none }
-        if d.allSatisfy({ $0 == 0x20 || $0 == 0x0A }) { return .some(nil) }        // nenhum documento
+    /// Expected value from `in.json`. `nil` if the case has none (the suite gives no JSON for it).
+    static func expected(_ testCase: String) -> Any?? {
+        guard let d = file(testCase, "in.json") else { return .none }
+        if d.allSatisfy({ $0 == 0x20 || $0 == 0x0A }) { return .some(nil) }        // no document
         return .some(try? JSONSerialization.jsonObject(with: d, options: [.fragmentsAllowed]))
     }
 }
 
-/// Compara o valor lido com o JSON da suíte (números por valor).
-enum CompararYAML {
-    static func valor(_ v: Valor, _ j: Any, _ onde: String) -> [String] {
-        if let x = CompararJSON.booleano(j) {
-            if case .booleano(let b) = v, b == x { return [] }
-            return ["\(onde): esperado \(x), veio \(v)"]
+/// Compares the value read with the suite's JSON (numbers by value).
+enum CompareYAML {
+    static func value(_ v: Value, _ j: Any, _ place: String) -> [String] {
+        if let x = CompareJSON.boolean(j) {
+            if case .boolean(let b) = v, b == x { return [] }
+            return ["\(place): expected \(x), got \(v)"]
         }
         switch j {
         case is NSNull:
-            if case .nulo = v { return [] }
-            return ["\(onde): esperado null, veio \(v)"]
+            if case .null = v { return [] }
+            return ["\(place): expected null, got \(v)"]
         case let n as NSNumber:
             switch v {
-            case .inteiro(let x): return Double(x) == n.doubleValue ? [] : ["\(onde): \(x) ≠ \(n)"]
-            case .decimal(let x): return x == n.doubleValue ? [] : ["\(onde): \(x) ≠ \(n)"]
-            default: return ["\(onde): esperado número \(n), veio \(v)"]
+            case .integer(let x): return Double(x) == n.doubleValue ? [] : ["\(place): \(x) ≠ \(n)"]
+            case .decimal(let x): return x == n.doubleValue ? [] : ["\(place): \(x) ≠ \(n)"]
+            default: return ["\(place): expected number \(n), got \(v)"]
             }
         case let s as String:
-            if case .texto(let t) = v, (t as NSString).isEqual(to: s) { return [] }
-            return ["\(onde): esperado \(s.debugDescription), veio \(v)"]
+            if case .text(let t) = v, (t as NSString).isEqual(to: s) { return [] }
+            return ["\(place): expected \(s.debugDescription), got \(v)"]
         case let a as [Any]:
-            guard case .lista(let l) = v else { return ["\(onde): esperado lista, veio \(v)"] }
-            guard l.count == a.count else { return ["\(onde): \(l.count) itens, esperado \(a.count)"] }
-            return zip(l, a).enumerated().flatMap { i, p in valor(p.0, p.1, "\(onde)[\(i)]") }
+            guard case .array(let l) = v else { return ["\(place): expected array, got \(v)"] }
+            guard l.count == a.count else { return ["\(place): \(l.count) items, expected \(a.count)"] }
+            return zip(l, a).enumerated().flatMap { i, p in value(p.0, p.1, "\(place)[\(i)]") }
         case let d as NSDictionary:
-            guard case .tabela(let t) = v else { return ["\(onde): esperado mapa, veio \(v)"] }
+            guard case .table(let t) = v else { return ["\(place): expected map, got \(v)"] }
             var r: [String] = []
-            if d.count != t.pares.count { r.append("\(onde): \(t.pares.count) chaves, esperado \(d.count)") }
+            if d.count != t.pairs.count { r.append("\(place): \(t.pairs.count) keys, expected \(d.count)") }
             for case let (k as NSString, x) in d {
-                guard let par = t.pares.first(where: { ($0.chave as NSString).isEqual(to: k as String) }) else {
-                    r.append("\(onde): falta a chave \(k)")
+                guard let pair = t.pairs.first(where: { ($0.key as NSString).isEqual(to: k as String) }) else {
+                    r.append("\(place): missing key \(k)")
                     continue
                 }
-                r += valor(par.valor, x, onde + "." + (k as String))
+                r += value(pair.value, x, place + "." + (k as String))
             }
             return r
         default:
-            return ["\(onde): JSON inesperado"]
+            return ["\(place): unexpected JSON"]
         }
     }
 }
 
-@Test func yamlSuiteTemOsCasos() {
-    #expect(SuiteYAML.casos.count == 402)
-    #expect(SuiteYAML.dentro.count + SuiteYAML.fora.count + SuiteYAML.erros.count == 402)
-    // as contagens vão para o relatório da missão (swift test mostra o print)
-    print("yaml-test-suite: \(SuiteYAML.casos.count) casos; dentro \(SuiteYAML.dentro.count), fora \(SuiteYAML.fora.count), erro \(SuiteYAML.erros.count)")
-    var motivos: [String: Int] = [:]
-    for c in SuiteYAML.fora { motivos[SuiteYAML.motivoFora(c)!, default: 0] += 1 }
-    print("fora do subconjunto, por motivo: \(motivos.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
+@Test func yamlSuiteHasTheCases() {
+    #expect(YAMLSuite.cases.count == 402)
+    #expect(YAMLSuite.inside.count + YAMLSuite.outside.count + YAMLSuite.errors.count == 402)
+    // the counts go into the report (swift test shows the print output)
+    print("yaml-test-suite: \(YAMLSuite.cases.count) cases; inside \(YAMLSuite.inside.count), outside \(YAMLSuite.outside.count), error \(YAMLSuite.errors.count)")
+    var reasons: [String: Int] = [:]
+    for c in YAMLSuite.outside { reasons[YAMLSuite.outsideReason(c)!, default: 0] += 1 }
+    print("outside the subset, by reason: \(reasons.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
 }
 
-@Test(arguments: SuiteYAML.dentro)
-func yamlDentro(_ caso: String) throws {
-    let doc: DocumentoConf
-    do { doc = try LeitorYAML.ler(SuiteYAML.bytes(caso)) } catch {
-        if let motivo = SuiteYAML.recusadosDentro[caso] {
-            print("dentro e recusado \(caso): \(motivo)")
+@Test(arguments: YAMLSuite.inside)
+func yamlInside(_ testCase: String) throws {
+    let doc: ConfDocument
+    do { doc = try YAMLReader.parse(YAMLSuite.bytes(testCase)) } catch {
+        if let reason = YAMLSuite.rejectedInside[testCase] {
+            print("inside and rejected \(testCase): \(reason)")
             return
         }
-        Issue.record("recusou um caso dentro do subconjunto: \(error)")
+        Issue.record("rejected a case inside the subset: \(error)")
         return
     }
-    #expect(SuiteYAML.recusadosDentro[caso] == nil, "aceito agora: tirar de recusadosDentro")
-    switch SuiteYAML.esperado(caso) {
+    #expect(YAMLSuite.rejectedInside[testCase] == nil, "accepted now: remove it from rejectedInside")
+    switch YAMLSuite.expected(testCase) {
     case .none:
-        break                                                               // a suíte não dá JSON
+        break                                                               // the suite gives no JSON
     case .some(nil):
-        #expect(doc.vazio, "esperado arquivo sem documento")
+        #expect(doc.empty, "expected a file with no document")
     case .some(let j?):
-        let d = CompararYAML.valor(doc.valorRaiz, j, "")
+        let d = CompareYAML.value(doc.rootValue, j, "")
         #expect(d.isEmpty, "\(d.prefix(5).joined(separator: "\n"))")
     }
 }
 
-@Test(arguments: SuiteYAML.fora)
-func yamlFora(_ caso: String) throws {
-    let doc: DocumentoConf
-    do { doc = try LeitorYAML.ler(SuiteYAML.bytes(caso)) } catch {
-        return                                                              // recusado: o que se espera
+@Test(arguments: YAMLSuite.outside)
+func yamlOutside(_ testCase: String) throws {
+    let doc: ConfDocument
+    do { doc = try YAMLReader.parse(YAMLSuite.bytes(testCase)) } catch {
+        return                                                              // rejected: as expected
     }
-    // aceito: só vale se os valores forem os mesmos do in.json
-    switch SuiteYAML.esperado(caso) {
+    // accepted: only fine if the values match in.json
+    switch YAMLSuite.expected(testCase) {
     case .none:
-        Issue.record("fora do subconjunto (\(SuiteYAML.motivoFora(caso)!)), aceito e sem JSON para conferir")
+        Issue.record("outside the subset (\(YAMLSuite.outsideReason(testCase)!)), accepted with no JSON to check against")
     case .some(nil):
-        #expect(doc.vazio)
+        #expect(doc.empty)
     case .some(let j?):
-        let d = CompararYAML.valor(doc.valorRaiz, j, "")
-        #expect(d.isEmpty, "fora do subconjunto (\(SuiteYAML.motivoFora(caso)!)), aceito com valores diferentes: \(d.prefix(5).joined(separator: "\n"))")
+        let d = CompareYAML.value(doc.rootValue, j, "")
+        #expect(d.isEmpty, "outside the subset (\(YAMLSuite.outsideReason(testCase)!)), accepted with different values: \(d.prefix(5).joined(separator: "\n"))")
     }
 }
 
-@Test(arguments: SuiteYAML.erros)
-func yamlErro(_ caso: String) {
+@Test(arguments: YAMLSuite.errors)
+func yamlError(_ testCase: String) {
     do {
-        let doc = try LeitorYAML.ler(SuiteYAML.bytes(caso))
-        Issue.record("aceitou um caso inválido: \(doc.valorRaiz)")
+        let doc = try YAMLReader.parse(YAMLSuite.bytes(testCase))
+        Issue.record("accepted an invalid case: \(doc.rootValue)")
     } catch {
-        #expect(error.linha >= 1 && error.coluna >= 1)
+        #expect(error.line >= 1 && error.column >= 1)
     }
 }
 
-/// Contagens para o relatório: quantos casos de cada classe foram aceitos ou recusados, e como.
-@Test func yamlSuiteContagens() {
-    var dentroAceitos = 0, dentroRecusados = 0
-    for c in SuiteYAML.dentro { if (try? LeitorYAML.ler(SuiteYAML.bytes(c))) != nil { dentroAceitos += 1 } else { dentroRecusados += 1 } }
-    var foraComoFora = 0, foraComoErro = 0, foraAceitos = 0
-    for c in SuiteYAML.fora {
-        do { _ = try LeitorYAML.ler(SuiteYAML.bytes(c)); foraAceitos += 1 } catch {
-            if error.foraDoSubconjunto { foraComoFora += 1 } else { foraComoErro += 1 }
+/// Counts for the report: how many cases of each class were accepted or rejected, and how.
+@Test func yamlSuiteCounts() {
+    var insideAccepted = 0, insideRejected = 0
+    for c in YAMLSuite.inside { if (try? YAMLReader.parse(YAMLSuite.bytes(c))) != nil { insideAccepted += 1 } else { insideRejected += 1 } }
+    var outsideAsOutside = 0, outsideAsError = 0, outsideAccepted = 0
+    for c in YAMLSuite.outside {
+        do { _ = try YAMLReader.parse(YAMLSuite.bytes(c)); outsideAccepted += 1 } catch {
+            if error.outsideSubset { outsideAsOutside += 1 } else { outsideAsError += 1 }
         }
     }
-    var errosRecusados = 0, errosComoFora = 0
-    for c in SuiteYAML.erros {
-        do { _ = try LeitorYAML.ler(SuiteYAML.bytes(c)) } catch {
-            errosRecusados += 1
-            if error.foraDoSubconjunto { errosComoFora += 1 }
+    var errorsRejected = 0, errorsAsOutside = 0
+    for c in YAMLSuite.errors {
+        do { _ = try YAMLReader.parse(YAMLSuite.bytes(c)) } catch {
+            errorsRejected += 1
+            if error.outsideSubset { errorsAsOutside += 1 }
         }
     }
     print("""
-        yaml-test-suite — dentro: \(SuiteYAML.dentro.count) (aceitos \(dentroAceitos), recusados \(dentroRecusados)); \
-        fora: \(SuiteYAML.fora.count) (recusados como fora do subconjunto \(foraComoFora), recusados como erro \(foraComoErro), \
-        aceitos com os valores do in.json \(foraAceitos)); erro: \(SuiteYAML.erros.count) (recusados \(errosRecusados), \
-        dos quais \(errosComoFora) pelo aviso de fora do subconjunto)
+        yaml-test-suite — inside: \(YAMLSuite.inside.count) (accepted \(insideAccepted), rejected \(insideRejected)); \
+        outside: \(YAMLSuite.outside.count) (rejected as outside the subset \(outsideAsOutside), rejected as error \(outsideAsError), \
+        accepted with the in.json values \(outsideAccepted)); error: \(YAMLSuite.errors.count) (rejected \(errorsRejected), \
+        of which \(errorsAsOutside) via the outside-the-subset notice)
         """)
-    #expect(dentroRecusados == SuiteYAML.recusadosDentro.count)
-    #expect(errosRecusados == SuiteYAML.erros.count)
+    #expect(insideRejected == YAMLSuite.rejectedInside.count)
+    #expect(errorsRejected == YAMLSuite.errors.count)
 }
 
-/// Entrada quebrada não pode travar nem estourar índice: cada prefixo de cada caso, e cada
-/// caso sem um byte, é lido (aceito ou recusado) sem erro de execução.
-@Test func yamlLeitorRobusto() {
-    var lidos = 0
-    for c in SuiteYAML.casos {
-        let bytes = SuiteYAML.bytes(c)
+/// Broken input must not hang or go out of bounds: every prefix of every case, and every
+/// case with one byte removed, is read (accepted or rejected) without a runtime error.
+@Test func yamlReaderIsRobust() {
+    var readCount = 0
+    for c in YAMLSuite.cases {
+        let bytes = YAMLSuite.bytes(c)
         for n in 0..<bytes.count {
-            _ = try? LeitorYAML.ler(Array(bytes.prefix(n)))
-            var sem = bytes
-            sem.remove(at: n)
-            _ = try? LeitorYAML.ler(sem)
-            lidos += 2
+            _ = try? YAMLReader.parse(Array(bytes.prefix(n)))
+            var without = bytes
+            without.remove(at: n)
+            _ = try? YAMLReader.parse(without)
+            readCount += 2
         }
     }
-    #expect(lidos > 10_000)
+    #expect(readCount > 10_000)
 }

@@ -4,27 +4,27 @@ import Testing
 
 private func b(_ s: String) -> [UInt8] { Array(s.utf8) }
 private func s(_ b: [UInt8]) -> String { String(decoding: b, as: UTF8.self) }
-private func k(_ chaves: String...) -> Caminho { chaves.map { .chave($0) } }
+private func k(_ keys: String...) -> ValuePath { keys.map { .key($0) } }
 
-/// Aplica uma alteração num YAML e devolve o texto novo.
-private func troca(_ texto: String, _ c: Caminho, _ v: Valor) throws -> String {
-    s(try Gravar.aplicar(b(texto), alteracoes: [c: .valor(v)], formato: .yaml))
+/// Applies one change to a YAML and returns the new text.
+private func swap(_ text: String, _ c: ValuePath, _ v: Value) throws -> String {
+    s(try Writer.apply(b(text), changes: [c: .value(v)], format: .yaml))
 }
 
-private let raizProjeto = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+private let projectRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
     .deletingLastPathComponent()
 
-// MARK: - Leitura
+// MARK: - Reading
 
-@Test func yamlFormatoPeloNome() {
-    #expect(Formato(nomeArquivo: "docker-compose.yml") == .yaml)
-    #expect(Formato(nomeArquivo: "config.YAML") == .yaml)
-    #expect(Formato(nomeArquivo: "pubspec.yaml") == .yaml)
-    #expect(Formato.yaml.nome == "YAML")
+@Test func yamlFormatFromName() {
+    #expect(Format(fileName: "docker-compose.yml") == .yaml)
+    #expect(Format(fileName: "config.YAML") == .yaml)
+    #expect(Format(fileName: "pubspec.yaml") == .yaml)
+    #expect(Format.yaml.name == "YAML")
 }
 
 @Test func yamlCoreSchema() throws {
-    let doc = try LeitorYAML.ler("""
+    let doc = try YAMLReader.parse("""
         a: yes
         b: no
         c: on
@@ -52,268 +52,268 @@ private let raizProjeto = URL(fileURLWithPath: #filePath).deletingLastPathCompon
         y: .5
 
         """)
-    let t = doc.raiz
-    #expect(t["a"] == .texto("yes") && t["b"] == .texto("no") && t["c"] == .texto("on") && t["d"] == .texto("off"),
-            "YAML 1.2: yes/no/on/off são texto")
-    #expect(t["e"] == .booleano(true) && t["f"] == .booleano(false))
-    #expect(t["g"] == .nulo && t["h"] == .nulo && t["i"] == .nulo)
-    #expect(t["j"] == .inteiro(31) && t["k"] == .inteiro(15))
-    #expect(t["l"] == .inteiro(10), "YAML 1.2: 010 é dez (no 1.1 seria octal)")
+    let t = doc.root
+    #expect(t["a"] == .text("yes") && t["b"] == .text("no") && t["c"] == .text("on") && t["d"] == .text("off"),
+            "YAML 1.2: yes/no/on/off are text")
+    #expect(t["e"] == .boolean(true) && t["f"] == .boolean(false))
+    #expect(t["g"] == .null && t["h"] == .null && t["i"] == .null)
+    #expect(t["j"] == .integer(31) && t["k"] == .integer(15))
+    #expect(t["l"] == .integer(10), "YAML 1.2: 010 is ten (in 1.1 it would be octal)")
     #expect(t["m"] == .decimal(1000))
     #expect(t["n"] == .decimal(.infinity) && t["o"] == .decimal(-.infinity))
     if case .decimal(let d)? = t["p"] { #expect(d.isNaN) } else { Issue.record("p") }
-    #expect(t["q"] == .inteiro(12))
-    #expect(t["r"] == .texto("1_000") && t["s"] == .texto("0b101"), "fora do core schema: texto")
-    #expect(t["t"] == .texto("2024-01-31") && t["u"] == .texto("12:30"), "sem datas nem sexagesimais no 1.2")
-    #expect(t["v"] == .texto("true") && t["w"] == .texto("1"), "entre aspas é sempre texto")
+    #expect(t["q"] == .integer(12))
+    #expect(t["r"] == .text("1_000") && t["s"] == .text("0b101"), "outside the core schema: text")
+    #expect(t["t"] == .text("2024-01-31") && t["u"] == .text("12:30"), "no dates or sexagesimals in 1.2")
+    #expect(t["v"] == .text("true") && t["w"] == .text("1"), "quoted is always text")
     #expect(t["x"] == .decimal(1) && t["y"] == .decimal(0.5))
 }
 
-@Test func yamlSecoesNaTela() throws {
-    let doc = try LeitorYAML.ler(Array(try Data(contentsOf: raizProjeto.appendingPathComponent("exemplos/config.yaml"))))
-    let secoes = Campos.secoes(doc)
-    #expect(secoes.map(\.id) == ["raiz", "services", "services.web", "services.web.environment", "services.web.healthcheck",
-                                 "services.banco", "services.banco.environment", "tarefas[0]", "tarefas[1]"])
-    #expect(secoes.first { $0.id == "tarefas[0]" }?.titulo == "backup")
-    #expect(secoes.first { $0.id == "tarefas[1]" }?.grupo == "tarefas")
-    let campos = Dictionary(uniqueKeysWithValues: secoes.flatMap(\.campos).map { ($0.id, $0) })
-    #expect(campos["nivel_log"]?.tipo == .escolha(["debug", "info", "aviso", "erro"]))
-    #expect(campos["nivel_log"]?.ajuda == "Nível de detalhe do log\ndebug | info | aviso | erro")
-    #expect(campos["services.web.restart"]?.tipo == .escolha(["no", "always", "on-failure", "unless-stopped"]))
-    #expect(campos["services.web.ports"]?.tipo == .lista(.texto))
-    #expect(campos["services.web.command"]?.tipo == .lista(.texto), "lista em linha só de textos: etiquetas")
-    #expect(campos["services.web.healthcheck.test"]?.valor == .lista([.texto("CMD"), .texto("curl"), .texto("-f"), .texto("http://localhost")]))
-    #expect(campos["services.web.environment.PAIS"]?.valor == .texto("no"))
-    #expect(campos["services.web.environment.DEBUG"]?.tipo == .booleano)
-    #expect(campos["manutencao"]?.valor == .texto("O painel está em manutenção.\nVolte em alguns minutos.\n"))
-    #expect(campos["pool"]?.tipo == .inteiro && campos["pool"]?.ajuda == "conexões simultâneas com o banco")
-    #expect(campos["limite_mb"]?.tipo == .decimal)
-    #expect(secoes.first { $0.id == "services.web" }?.ajuda == "Servidor web na frente do painel")
+@Test func yamlSectionsOnScreen() throws {
+    let doc = try YAMLReader.parse(Array(try Data(contentsOf: projectRoot.appendingPathComponent("examples/config.yaml"))))
+    let sections = Fields.sections(doc)
+    #expect(sections.map(\.id) == [FormSection.rootID, "services", "services.web", "services.web.environment", "services.web.healthcheck",
+                                 "services.database", "services.database.environment", "tasks[0]", "tasks[1]"])
+    #expect(sections.first { $0.id == "tasks[0]" }?.title == "backup")
+    #expect(sections.first { $0.id == "tasks[1]" }?.group == "tasks")
+    let fields = Dictionary(uniqueKeysWithValues: sections.flatMap(\.fields).map { ($0.id, $0) })
+    #expect(fields["log_level"]?.kind == .choice(["debug", "info", "warning", "error"]))
+    #expect(fields["log_level"]?.help == "Log detail level\ndebug | info | warning | error")
+    #expect(fields["services.web.restart"]?.kind == .choice(["no", "always", "on-failure", "unless-stopped"]))
+    #expect(fields["services.web.ports"]?.kind == .array(.text))
+    #expect(fields["services.web.command"]?.kind == .array(.text), "flow sequence of text only: chips")
+    #expect(fields["services.web.healthcheck.test"]?.value == .array([.text("CMD"), .text("curl"), .text("-f"), .text("http://localhost")]))
+    #expect(fields["services.web.environment.COUNTRY"]?.value == .text("no"))
+    #expect(fields["services.web.environment.DEBUG"]?.kind == .boolean)
+    #expect(fields["maintenance"]?.value == .text("The dashboard is under maintenance.\nPlease come back in a few minutes.\n"))
+    #expect(fields["pool"]?.kind == .integer && fields["pool"]?.help == "simultaneous connections to the database")
+    #expect(fields["limit_mb"]?.kind == .decimal)
+    #expect(sections.first { $0.id == "services.web" }?.help == "Web server in front of the dashboard")
 }
 
-@Test func yamlListaEmLinhaMistaETabelaSaoTextoCru() throws {
-    let doc = try LeitorYAML.ler("a: [1, x]\nb: {c: 1}\nc:\n  - 1\n  - [2]\nd:\n")
-    let campos = Dictionary(uniqueKeysWithValues: Campos.secoes(doc).flatMap(\.campos).map { ($0.id, $0) })
-    #expect(campos["a"]?.tipo == .cru && campos["b"]?.tipo == .cru && campos["c"]?.tipo == .cru && campos["d"]?.tipo == .cru)
-    #expect(campos["b"]?.tipo.nome(em: .yaml) == "YAML")
+@Test func yamlMixedInlineArrayAndTableAreRawText() throws {
+    let doc = try YAMLReader.parse("a: [1, x]\nb: {c: 1}\nc:\n  - 1\n  - [2]\nd:\n")
+    let fields = Dictionary(uniqueKeysWithValues: Fields.sections(doc).flatMap(\.fields).map { ($0.id, $0) })
+    #expect(fields["a"]?.kind == .raw && fields["b"]?.kind == .raw && fields["c"]?.kind == .raw && fields["d"]?.kind == .raw)
+    #expect(fields["b"]?.kind.name(at: .yaml) == "YAML")
 }
 
 @Test(arguments: [
-    ("a: 1\na: 2\n", 2, "já apareceu"),
-    ("a:\n\t- 1\n", 2, "tabulação"),
-    ("a: 'x\n", 1, "aspas"),
+    ("a: 1\na: 2\n", 2, "already appeared"),
+    ("a:\n\t- 1\n", 2, "tab"),
+    ("a: 'x\n", 1, "quotes"),
     ("a: [1, 2\n", 1, "]"),
-    ("a: b: c\n", 1, "mapa"),
-    ("- a\nb: 1\n", 2, "inesperado"),
+    ("a: b: c\n", 1, "map"),
+    ("- a\nb: 1\n", 2, "unexpected"),
     ("a: \"\\q\"\n", 1, "escape"),
 ])
-func yamlErros(_ caso: (String, Int, String)) {
+func yamlErrors(_ testCase: (String, Int, String)) {
     do {
-        _ = try LeitorYAML.ler(caso.0)
-        Issue.record("aceitou: \(caso.0)")
+        _ = try YAMLReader.parse(testCase.0)
+        Issue.record("accepted: \(testCase.0)")
     } catch {
-        #expect(!error.foraDoSubconjunto)
-        #expect(error.linha == caso.1, "\(error)")
-        #expect(error.mensagem.contains(caso.2), "\(error)")
+        #expect(!error.outsideSubset)
+        #expect(error.line == testCase.1, "\(error)")
+        #expect(error.message.contains(testCase.2), "\(error)")
     }
 }
 
 @Test(arguments: [
-    ("base: &b {a: 1}\n", 1, "âncora"),
+    ("base: &b {a: 1}\n", 1, "anchor"),
     ("a: 1\nb: *x\n", 2, "alias"),
-    ("a:\n  <<: {b: 1}\n", 2, "mesclagem"),
-    ("a: !Ref x\n", 1, "etiqueta"),
-    ("a: !!str 1\n", 1, "etiqueta"),
-    ("%YAML 1.2\n---\na: 1\n", 1, "diretiva"),
-    ("a: 1\n---\nb: 2\n", 2, "mais de um documento"),
-    ("a: 1\n...\nb: 2\n", 3, "mais de um documento"),
-    ("? a\n: 1\n", 1, "chave complexa"),
-    ("[a, b]: 1\n", 1, "chave complexa"),
-    ("~: 1\n", 1, "chave nula"),
+    ("a:\n  <<: {b: 1}\n", 2, "merge"),
+    ("a: !Ref x\n", 1, "tag"),
+    ("a: !!str 1\n", 1, "tag"),
+    ("%YAML 1.2\n---\na: 1\n", 1, "directive"),
+    ("a: 1\n---\nb: 2\n", 2, "more than one document"),
+    ("a: 1\n...\nb: 2\n", 3, "more than one document"),
+    ("? a\n: 1\n", 1, "complex key"),
+    ("[a, b]: 1\n", 1, "complex key"),
+    ("~: 1\n", 1, "null key"),
 ])
-func yamlForaDoSubconjunto(_ caso: (String, Int, String)) {
+func yamlOutsideSubset(_ testCase: (String, Int, String)) {
     do {
-        _ = try LeitorYAML.ler(caso.0)
-        Issue.record("aceitou: \(caso.0)")
+        _ = try YAMLReader.parse(testCase.0)
+        Issue.record("accepted: \(testCase.0)")
     } catch {
-        #expect(error.foraDoSubconjunto, "\(error)")
-        #expect(error.linha == caso.1, "\(error)")
-        #expect(error.mensagem.contains(caso.2), "\(error)")
-        #expect(error.errorDescription?.contains("fora do subconjunto") == true)
+        #expect(error.outsideSubset, "\(error)")
+        #expect(error.line == testCase.1, "\(error)")
+        #expect(error.message.contains(testCase.2), "\(error)")
+        #expect(error.errorDescription?.contains("outside the subset") == true)
     }
 }
 
-@Test func yamlForaDoSubconjuntoAbreSoComoTexto() throws {
-    let texto = b("defaults: &d\n  a: 1\nprod:\n  <<: *d\n  b: 2\n")
-    var ed = Edicao(texto, formato: .yaml)
-    #expect(ed.documento == nil && ed.somenteTexto)
-    #expect(try ed.resultado() == texto, "sem alteração: os mesmos bytes")
-    // o texto pode ser trocado por outro também fora do subconjunto (gravado como está)
-    let novo = b("defaults: &d\n  a: 2\nprod:\n  <<: *d\n")
-    try ed.trocarTexto(novo)
-    #expect(try ed.resultado() == novo && ed.somenteTexto)
-    // e por um dentro do subconjunto, que volta a abrir no formulário
-    try ed.trocarTexto(b("a: 1\n"))
-    #expect(ed.documento != nil && !ed.somenteTexto)
-    // texto com erro de verdade continua recusado
-    #expect(throws: ErroLeitura.self) { try ed.trocarTexto(b("a: [1\n")) }
-    // os outros formatos não mudam: erro é erro
-    var ini = Edicao(b("a = 1\n"), formato: .ini)
-    #expect(throws: ErroLeitura.self) { try ini.trocarTexto(b("lixo\n")) }
+@Test func yamlOutsideSubsetOpensAsTextOnly() throws {
+    let text = b("defaults: &d\n  a: 1\nprod:\n  <<: *d\n  b: 2\n")
+    var ed = EditSession(text, format: .yaml)
+    #expect(ed.document == nil && ed.textOnly)
+    #expect(try ed.result() == text, "no change: the same bytes")
+    // the text can be replaced with another one also outside the subset (saved as is)
+    let updated = b("defaults: &d\n  a: 2\nprod:\n  <<: *d\n")
+    try ed.replaceText(updated)
+    #expect(try ed.result() == updated && ed.textOnly)
+    // and with one inside the subset, which opens in the form again
+    try ed.replaceText(b("a: 1\n"))
+    #expect(ed.document != nil && !ed.textOnly)
+    // text with a real error is still rejected
+    #expect(throws: ParseError.self) { try ed.replaceText(b("a: [1\n")) }
+    // the other formats are unchanged: an error is an error
+    var ini = EditSession(b("a = 1\n"), format: .ini)
+    #expect(throws: ParseError.self) { try ini.replaceText(b("junk\n")) }
 }
 
-@Test func yamlLerValor() throws {
-    #expect(try LeitorYAML.lerValor("[1, a]") == .lista([.inteiro(1), .texto("a")]))
-    #expect(try LeitorYAML.lerValor("{a: 1}") == .tabela(Tabela(pares: [.init(chave: "a", valor: .inteiro(1))])))
-    #expect(try LeitorYAML.lerValor("'x'") == .texto("x"))
-    #expect(try LeitorYAML.lerValor("") == .nulo)
-    #expect(try LeitorYAML.lerValor("42") == .inteiro(42))
-    // texto de uma lista em bloco como está no arquivo (com o recuo)
-    #expect(try LeitorYAML.lerValor("  - a\n  - b") == .lista([.texto("a"), .texto("b")]))
-    #expect(throws: ErroLeitura.self) { try LeitorYAML.lerValor("[1,") }
+@Test func yamlParseValue() throws {
+    #expect(try YAMLReader.parseValue("[1, a]") == .array([.integer(1), .text("a")]))
+    #expect(try YAMLReader.parseValue("{a: 1}") == .table(Table(pairs: [.init(key: "a", value: .integer(1))])))
+    #expect(try YAMLReader.parseValue("'x'") == .text("x"))
+    #expect(try YAMLReader.parseValue("") == .null)
+    #expect(try YAMLReader.parseValue("42") == .integer(42))
+    // text of a block sequence as it is in the file (with the indentation)
+    #expect(try YAMLReader.parseValue("  - a\n  - b") == .array([.text("a"), .text("b")]))
+    #expect(throws: ParseError.self) { try YAMLReader.parseValue("[1,") }
 }
 
-// MARK: - Aspas de proteção (YAML 1.1)
+// MARK: - Protective quotes (YAML 1.1)
 
 @Test(arguments: ["no", "No", "NO", "yes", "on", "off", "y", "n", "true", "False", "null", "~", "1e3", "010", "0x1F",
                   "0b11", "1_000", "12:30", "8080:80", "1.5", ".5", ".inf", "-.inf", ".nan", "2024-01-31", "<<", "=", ""])
-func yamlAspasDeProtecao(_ texto: String) throws {
-    // valor sem aspas no original: o texto novo que outro leitor entenderia como outro tipo ganha aspas
-    let r = try troca("pais: br\n", k("pais"), .texto(texto))
-    #expect(r == "pais: \"\(texto)\"\n", "\(texto) → \(r)")
-    #expect(try LeitorYAML.ler(r).raiz["pais"] == .texto(texto))
+func yamlProtectiveQuotes(_ text: String) throws {
+    // unquoted value in the original: new text that another reader would read as another type gets quotes
+    let r = try swap("country: br\n", k("country"), .text(text))
+    #expect(r == "country: \"\(text)\"\n", "\(text) → \(r)")
+    #expect(try YAMLReader.parse(r).root["country"] == .text(text))
 }
 
-@Test func yamlSemAspasQuandoCabe() throws {
-    #expect(try troca("a: x\n", k("a"), .texto("Noruega")) == "a: Noruega\n")
-    #expect(try troca("a: x\n", k("a"), .texto("nginx:1.28")) == "a: nginx:1.28\n")
-    #expect(try troca("a: x\n", k("a"), .texto("http://x/#a")) == "a: http://x/#a\n")
-    // precisa de aspas: ': ', ' #', começo especial, espaços nas pontas
-    #expect(try troca("a: x\n", k("a"), .texto("a: b")) == "a: \"a: b\"\n")
-    #expect(try troca("a: x\n", k("a"), .texto("a #b")) == "a: \"a #b\"\n")
-    #expect(try troca("a: x\n", k("a"), .texto("*x")) == "a: \"*x\"\n")
-    #expect(try troca("a: x\n", k("a"), .texto("- x")) == "a: \"- x\"\n")
-    #expect(try troca("a: x\n", k("a"), .texto(" x")) == "a: \" x\"\n")
-    #expect(try troca("a: x\n", k("a"), .texto("x\ny")) == "a: \"x\\ny\"\n")
-    // o tipo de aspas se mantém
-    #expect(try troca("a: 'x'\n", k("a"), .texto("it's")) == "a: 'it''s'\n")
-    #expect(try troca("a: 'x'\n", k("a"), .texto("no")) == "a: 'no'\n")
-    #expect(try troca("a: \"x\"\n", k("a"), .texto("y")) == "a: \"y\"\n")
-    #expect(try troca("a: 'x'\n", k("a"), .texto("x\ny")) == "a: \"x\\ny\"\n")
-    // valor vazio: `a: novo`, não `a:novo`
-    #expect(try troca("a:\nb: 1\n", k("a"), .texto("novo")) == "a: novo\nb: 1\n")
-    #expect(try troca("a: # nota\n", k("a"), .inteiro(3)) == "a: 3 # nota\n")
+@Test func yamlUnquotedWhenItFits() throws {
+    #expect(try swap("a: x\n", k("a"), .text("Norway")) == "a: Norway\n")
+    #expect(try swap("a: x\n", k("a"), .text("nginx:1.28")) == "a: nginx:1.28\n")
+    #expect(try swap("a: x\n", k("a"), .text("http://x/#a")) == "a: http://x/#a\n")
+    // needs quotes: ': ', ' #', special start, leading/trailing spaces
+    #expect(try swap("a: x\n", k("a"), .text("a: b")) == "a: \"a: b\"\n")
+    #expect(try swap("a: x\n", k("a"), .text("a #b")) == "a: \"a #b\"\n")
+    #expect(try swap("a: x\n", k("a"), .text("*x")) == "a: \"*x\"\n")
+    #expect(try swap("a: x\n", k("a"), .text("- x")) == "a: \"- x\"\n")
+    #expect(try swap("a: x\n", k("a"), .text(" x")) == "a: \" x\"\n")
+    #expect(try swap("a: x\n", k("a"), .text("x\ny")) == "a: \"x\\ny\"\n")
+    // the quote style is kept
+    #expect(try swap("a: 'x'\n", k("a"), .text("it's")) == "a: 'it''s'\n")
+    #expect(try swap("a: 'x'\n", k("a"), .text("no")) == "a: 'no'\n")
+    #expect(try swap("a: \"x\"\n", k("a"), .text("y")) == "a: \"y\"\n")
+    #expect(try swap("a: 'x'\n", k("a"), .text("x\ny")) == "a: \"x\\ny\"\n")
+    // empty value: `a: new`, not `a:new`
+    #expect(try swap("a:\nb: 1\n", k("a"), .text("new")) == "a: new\nb: 1\n")
+    #expect(try swap("a: # note\n", k("a"), .integer(3)) == "a: 3 # note\n")
 }
 
-@Test func yamlNumerosMantemAForma() throws {
-    #expect(try troca("a: 0x1F\n", k("a"), .inteiro(255)) == "a: 0xFF\n")
-    #expect(try troca("a: 0o17\n", k("a"), .inteiro(8)) == "a: 0o10\n")
-    #expect(try troca("a: +5\n", k("a"), .inteiro(6)) == "a: +6\n")
-    #expect(try troca("a: 1.50\n", k("a"), .decimal(2.25)) == "a: 2.25\n")
-    #expect(try troca("a: 1.5e3\n", k("a"), .decimal(2000)) == "a: 2.0e3\n")
-    #expect(try troca("a: .Inf\n", k("a"), .decimal(-.infinity)) == "a: -.Inf\n")
-    #expect(try troca("a: True\n", k("a"), .booleano(false)) == "a: False\n")
-    #expect(try troca("a: 1\n", k("a"), .decimal(2.5)) == "a: 2.5\n")
-    #expect(throws: ErroGravar.self) {
-        try troca("a: 1\n", k("a"), .dataHora(DataHora(tipo: .data)))
+@Test func yamlNumbersKeepShape() throws {
+    #expect(try swap("a: 0x1F\n", k("a"), .integer(255)) == "a: 0xFF\n")
+    #expect(try swap("a: 0o17\n", k("a"), .integer(8)) == "a: 0o10\n")
+    #expect(try swap("a: +5\n", k("a"), .integer(6)) == "a: +6\n")
+    #expect(try swap("a: 1.50\n", k("a"), .decimal(2.25)) == "a: 2.25\n")
+    #expect(try swap("a: 1.5e3\n", k("a"), .decimal(2000)) == "a: 2.0e3\n")
+    #expect(try swap("a: .Inf\n", k("a"), .decimal(-.infinity)) == "a: -.Inf\n")
+    #expect(try swap("a: True\n", k("a"), .boolean(false)) == "a: False\n")
+    #expect(try swap("a: 1\n", k("a"), .decimal(2.5)) == "a: 2.5\n")
+    #expect(throws: SaveError.self) {
+        try swap("a: 1\n", k("a"), .dateTime(DateTime(kind: .date)))
     }
 }
 
-// MARK: - Listas em bloco
+// MARK: - Block sequences
 
-@Test func yamlListaCresce() throws {
-    let texto = "portas:\n  - 80   # http\n  - \"443\"\nfim: 1\n"
-    let r = try troca(texto, k("portas"), .lista([.inteiro(80), .texto("443"), .texto("8443")]))
-    #expect(r == "portas:\n  - 80   # http\n  - \"443\"\n  - \"8443\"\nfim: 1\n")
-    let d = Diferenca.linhas(b(texto), b(r))
-    #expect(d.count == 1 && d[0].removidas.isEmpty && d[0].adicionadas == ["  - \"8443\""])
-    // vários itens novos, recuo zero (lista no mesmo recuo da chave)
-    let r2 = try troca("a:\n- x\nb: 2\n", k("a"), .lista([.texto("x"), .texto("w"), .texto("no")]))
-    #expect(r2 == "a:\n- x\n- w\n- \"no\"\nb: 2\n", "'no' ganha aspas de proteção")
-    // item novo de outro tipo
-    let r3 = try troca("a:\n  - x\n", k("a"), .lista([.texto("x"), .inteiro(3)]))
+@Test func yamlArrayGrows() throws {
+    let text = "ports:\n  - 80   # http\n  - \"443\"\nend: 1\n"
+    let r = try swap(text, k("ports"), .array([.integer(80), .text("443"), .text("8443")]))
+    #expect(r == "ports:\n  - 80   # http\n  - \"443\"\n  - \"8443\"\nend: 1\n")
+    let d = Diff.lines(b(text), b(r))
+    #expect(d.count == 1 && d[0].removed.isEmpty && d[0].added == ["  - \"8443\""])
+    // several new items, zero indentation (sequence at the same indentation as the key)
+    let r2 = try swap("a:\n- x\nb: 2\n", k("a"), .array([.text("x"), .text("w"), .text("no")]))
+    #expect(r2 == "a:\n- x\n- w\n- \"no\"\nb: 2\n", "'no' gets protective quotes")
+    // new item of another type
+    let r3 = try swap("a:\n  - x\n", k("a"), .array([.text("x"), .integer(3)]))
     #expect(r3 == "a:\n  - x\n  - 3\n")
 }
 
-@Test func yamlListaEncolhe() throws {
-    let texto = "l:\n  - a\n  # sobre b\n  - b\n  - c  # c\nfim: 1\n"
-    #expect(try troca(texto, k("l"), .lista([.texto("a"), .texto("c")])) == "l:\n  - a\n  # sobre b\n  - c  # c\nfim: 1\n")
-    #expect(try troca(texto, k("l"), .lista([.texto("b"), .texto("c")])) == "l:\n  # sobre b\n  - b\n  - c  # c\nfim: 1\n")
-    #expect(try troca(texto, k("l"), .lista([.texto("a"), .texto("b")])) == "l:\n  - a\n  # sobre b\n  - b\nfim: 1\n")
-    #expect(try troca(texto, k("l"), .lista([])) == "l:\n  []\nfim: 1\n")
-    // trocar um item e tirar outro: o último sai, o primeiro muda no lugar
-    #expect(try troca(texto, k("l"), .lista([.texto("A"), .texto("b")])) == "l:\n  - A\n  # sobre b\n  - b\nfim: 1\n")
+@Test func yamlArrayShrinks() throws {
+    let text = "l:\n  - a\n  # about b\n  - b\n  - c  # c\nend: 1\n"
+    #expect(try swap(text, k("l"), .array([.text("a"), .text("c")])) == "l:\n  - a\n  # about b\n  - c  # c\nend: 1\n")
+    #expect(try swap(text, k("l"), .array([.text("b"), .text("c")])) == "l:\n  # about b\n  - b\n  - c  # c\nend: 1\n")
+    #expect(try swap(text, k("l"), .array([.text("a"), .text("b")])) == "l:\n  - a\n  # about b\n  - b\nend: 1\n")
+    #expect(try swap(text, k("l"), .array([])) == "l:\n  []\nend: 1\n")
+    // change one item and remove another: the last one goes, the first changes in place
+    #expect(try swap(text, k("l"), .array([.text("A"), .text("b")])) == "l:\n  - A\n  # about b\n  - b\nend: 1\n")
 }
 
-@Test func yamlListaEmLinha() throws {
-    #expect(try troca("a: [x, w]\n", k("a"), .lista([.texto("x"), .texto("w"), .texto("z w")])) == "a: [x, w, z w]\n")
-    #expect(try troca("a: [x, w]\n", k("a"), .lista([.texto("x"), .texto("a,b")])) == "a: [x, \"a,b\"]\n")
-    #expect(try troca("a: ['x', \"w\"]\n", k("a"), .lista([.texto("x2"), .texto("w")])) == "a: ['x2', \"w\"]\n")
-    #expect(try troca("a: {b, c: 1}\n", k("a"), .tabela(Tabela(pares: [.init(chave: "b", valor: .nulo)]))) == "a: {b: null}\n")
-    #expect(try troca("a: [1, 2]\n", k("a"), .lista([.inteiro(1)])) == "a: [1]\n")
+@Test func yamlInlineArray() throws {
+    #expect(try swap("a: [x, w]\n", k("a"), .array([.text("x"), .text("w"), .text("z w")])) == "a: [x, w, z w]\n")
+    #expect(try swap("a: [x, w]\n", k("a"), .array([.text("x"), .text("a,b")])) == "a: [x, \"a,b\"]\n")
+    #expect(try swap("a: ['x', \"w\"]\n", k("a"), .array([.text("x2"), .text("w")])) == "a: ['x2', \"w\"]\n")
+    #expect(try swap("a: {b, c: 1}\n", k("a"), .table(Table(pairs: [.init(key: "b", value: .null)]))) == "a: {b: null}\n")
+    #expect(try swap("a: [1, 2]\n", k("a"), .array([.integer(1)])) == "a: [1]\n")
 }
 
-// MARK: - Blocos | e >
+// MARK: - Blocks | and >
 
-@Test func yamlBlocoLiteral() throws {
-    let texto = "msg: |  # nota\n  linha 1\n  linha 2\nfim: 1\n"
-    #expect(try troca(texto, k("msg"), .texto("um\ndois\ntrês\n")) == "msg: |  # nota\n  um\n  dois\n  três\nfim: 1\n")
-    // sem quebra no fim: indicador '-'; com várias: '+'
-    #expect(try troca(texto, k("msg"), .texto("um")) == "msg: |-  # nota\n  um\nfim: 1\n")
-    #expect(try troca(texto, k("msg"), .texto("um\n\n")) == "msg: |+  # nota\n  um\n\nfim: 1\n")
-    // linhas em branco no meio ficam vazias (sem espaços)
-    #expect(try troca(texto, k("msg"), .texto("a\n\nb\n")) == "msg: |  # nota\n  a\n\n  b\nfim: 1\n")
-    // primeira linha com espaço precisaria de indicador de recuo: vira aspas
-    #expect(try troca(texto, k("msg"), .texto("  x\n")) == "msg: \"  x\\n\"\nfim: 1\n")
-    // o recuo do original se mantém, também em item de lista
-    #expect(try troca("l:\n    - |\n        a\n", k("l"), .lista([.texto("b\n")])) == "l:\n    - |\n        b\n")
-    // no fim do arquivo, sem quebra final
-    #expect(try troca("a: |\n  x", k("a"), .texto("y\n")) == "a: |\n  y\n")
-    #expect(try troca("a: |\n  x", k("a"), .texto("y\n\n")) == "a: |+\n  y\n\n")
+@Test func yamlLiteralBlock() throws {
+    let text = "msg: |  # note\n  line 1\n  line 2\nend: 1\n"
+    #expect(try swap(text, k("msg"), .text("one\ntwo\nthree\n")) == "msg: |  # note\n  one\n  two\n  three\nend: 1\n")
+    // no trailing line break: '-' indicator; several: '+'
+    #expect(try swap(text, k("msg"), .text("one")) == "msg: |-  # note\n  one\nend: 1\n")
+    #expect(try swap(text, k("msg"), .text("one\n\n")) == "msg: |+  # note\n  one\n\nend: 1\n")
+    // blank lines in the middle stay empty (no spaces)
+    #expect(try swap(text, k("msg"), .text("a\n\nb\n")) == "msg: |  # note\n  a\n\n  b\nend: 1\n")
+    // a first line starting with a space would need an indentation indicator: becomes quoted
+    #expect(try swap(text, k("msg"), .text("  x\n")) == "msg: \"  x\\n\"\nend: 1\n")
+    // the original indentation is kept, also in a sequence item
+    #expect(try swap("l:\n    - |\n        a\n", k("l"), .array([.text("b\n")])) == "l:\n    - |\n        b\n")
+    // at the end of the file, without a final line break
+    #expect(try swap("a: |\n  x", k("a"), .text("y\n")) == "a: |\n  y\n")
+    #expect(try swap("a: |\n  x", k("a"), .text("y\n\n")) == "a: |+\n  y\n\n")
 }
 
-@Test func yamlBlocoDobrado() throws {
-    let texto = "msg: >\n  um texto\n  longo\n\n  outro\nfim: 1\n"
-    #expect(try LeitorYAML.ler(texto).raiz["msg"] == .texto("um texto longo\noutro\n"))
-    #expect(try troca(texto, k("msg"), .texto("a b\nc\n")) == "msg: >\n  a b\n\n  c\nfim: 1\n")
-    // linha com espaço no começo não é dobrada: vira literal
-    #expect(try troca(texto, k("msg"), .texto("a\n  b\n")) == "msg: |\n  a\n    b\nfim: 1\n")
-    // com indicador de recuo (a linha com espaço no começo também faz o `>` virar `|`)
-    let r = try troca("a: >2\n   x\n", k("a"), .texto(" y\n"))
+@Test func yamlFoldedBlock() throws {
+    let text = "msg: >\n  a long\n  text\n\n  another\nend: 1\n"
+    #expect(try YAMLReader.parse(text).root["msg"] == .text("a long text\nanother\n"))
+    #expect(try swap(text, k("msg"), .text("a b\nc\n")) == "msg: >\n  a b\n\n  c\nend: 1\n")
+    // a line starting with a space is not folded: becomes literal
+    #expect(try swap(text, k("msg"), .text("a\n  b\n")) == "msg: |\n  a\n    b\nend: 1\n")
+    // with an indentation indicator (the line starting with a space also turns `>` into `|`)
+    let r = try swap("a: >2\n   x\n", k("a"), .text(" y\n"))
     #expect(r == "a: |2\n   y\n")
-    #expect(try LeitorYAML.ler(r).raiz["a"] == .texto(" y\n"))
+    #expect(try YAMLReader.parse(r).root["a"] == .text(" y\n"))
 }
 
-@Test func yamlBlocoComMaisAntesDeLinhasEmBranco() throws {
-    // texto novo com '+' e linhas em branco depois do bloco: seriam lidas como parte do valor
-    let r = try troca("a: |\n  x\n\nb: 1\n", k("a"), .texto("y\n\n"))
-    #expect(try LeitorYAML.ler(r).raiz["a"] == .texto("y\n\n"))
+@Test func yamlBlockWithKeepBeforeBlankLines() throws {
+    // new text with '+' and blank lines after the block: they would be read as part of the value
+    let r = try swap("a: |\n  x\n\nb: 1\n", k("a"), .text("y\n\n"))
+    #expect(try YAMLReader.parse(r).root["a"] == .text("y\n\n"))
     #expect(r.hasSuffix("\n\nb: 1\n"))
 }
 
-// MARK: - CRLF e BOM
+// MARK: - CRLF and BOM
 
-@Test func yamlCRLFeBOM() throws {
-    let texto: [UInt8] = [0xEF, 0xBB, 0xBF] + b("# c\r\na: 1\r\nl:\r\n  - x\r\nm: |\r\n  um\r\n  dois\r\nz: fim\r\n")
-    let doc = try LeitorYAML.ler(texto)
-    #expect(doc.temBOM && doc.quebraDeLinha == "\r\n")
-    #expect(doc.raiz["m"] == .texto("um\ndois\n"), "CRLF dentro do bloco vira \\n")
-    #expect(doc.entrada(k("a"))?.comentarioAcima == ["c"])
-    var ed = Edicao(texto, formato: .yaml)
-    #expect(try ed.resultado() == texto)
-    try ed.definir(k("l"), .valor(.lista([.texto("x"), .texto("w")])))
-    try ed.definir(k("m"), .valor(.texto("um\ndois\ntrês\n")))
-    try ed.definir(k("a"), .valor(.inteiro(2)))
-    let r = try ed.resultado()
-    #expect(r == [0xEF, 0xBB, 0xBF] + b("# c\r\na: 2\r\nl:\r\n  - x\r\n  - w\r\nm: |\r\n  um\r\n  dois\r\n  três\r\nz: fim\r\n"))
+@Test func yamlCRLFAndBOM() throws {
+    let text: [UInt8] = [0xEF, 0xBB, 0xBF] + b("# c\r\na: 1\r\nl:\r\n  - x\r\nm: |\r\n  one\r\n  two\r\nz: end\r\n")
+    let doc = try YAMLReader.parse(text)
+    #expect(doc.hasBOM && doc.lineBreak == "\r\n")
+    #expect(doc.root["m"] == .text("one\ntwo\n"), "CRLF inside the block becomes \\n")
+    #expect(doc.entry(k("a"))?.commentAbove == ["c"])
+    var ed = EditSession(text, format: .yaml)
+    #expect(try ed.result() == text)
+    try ed.assign(k("l"), .value(.array([.text("x"), .text("w")])))
+    try ed.assign(k("m"), .value(.text("one\ntwo\nthree\n")))
+    try ed.assign(k("a"), .value(.integer(2)))
+    let r = try ed.result()
+    #expect(r == [0xEF, 0xBB, 0xBF] + b("# c\r\na: 2\r\nl:\r\n  - x\r\n  - w\r\nm: |\r\n  one\r\n  two\r\n  three\r\nz: end\r\n"))
 }
 
-// MARK: - Critérios 2 e 3: em todos os casos aceitos da suíte, no exemplo e em casos próprios
+// MARK: - Criteria 2 and 3: on every accepted case of the suite, on the example and on our own cases
 
-private let yamlEspeciais: [String: [UInt8]] = [
-    "vazio": [],
-    "so-comentarios": b("# nada\n\n# aqui\n"),
-    "sem-quebra-final": b("a: 1\nb: 'dois'"),
+private let yamlSpecials: [String: [UInt8]] = [
+    "empty": [],
+    "comments-only": b("# nothing\n\n# here\n"),
+    "no-final-newline": b("a: 1\nb: 'two'"),
     "crlf-bom": [0xEF, 0xBB, 0xBF] + b("# c\r\na: \"x y\" # z\r\n\r\nl:\r\n  - 1\r\n  -\r\n  - [a, b]\r\nc:\r\nd: |-\r\n  t\r\n"),
     "docker-compose": b("""
         services:
@@ -356,8 +356,8 @@ private let yamlEspeciais: [String: [UInt8]] = [
                   image: nginx:1.27
                   args: ["--port", "8080"]
                   env:
-                    - name: MODO
-                      value: "producao"
+                    - name: MODE
+                      value: "production"
                   resources:
                     limits:
                       cpu: 500m
@@ -367,8 +367,8 @@ private let yamlEspeciais: [String: [UInt8]] = [
     "pubspec": b("""
         name: km_lib
         description: >-
-          Biblioteca comum dos apps
-          Kogumelo.
+          Shared library of the
+          Kogumelo apps.
         version: 1.2.3+4
         publish_to: none
 
@@ -383,14 +383,14 @@ private let yamlEspeciais: [String: [UInt8]] = [
     "openapi": b("""
         openapi: 3.0.3
         info:
-          title: API do painel
+          title: Dashboard API
           description: |
-            Linha 1.
+            Line 1.
 
-            Linha 3, depois de uma em branco.
+            Line 3, after a blank one.
           version: "2.0"
         paths:
-          /tarefas/{id}:
+          /tasks/{id}:
             get:
               parameters:
                 - in: path
@@ -402,89 +402,89 @@ private let yamlEspeciais: [String: [UInt8]] = [
                   description: OK
 
         """),
-    "raiz-lista": b("- a\n- b: 1\n- [x]\n"),
-    "raiz-escalar": b("--- texto solto\n...\n"),
-    "explicito": b("---\na: 1\n...\n# fim\n"),
+    "root-sequence": b("- a\n- b: 1\n- [x]\n"),
+    "root-scalar": b("--- loose text\n...\n"),
+    "explicit": b("---\na: 1\n...\n# end\n"),
 ]
 
-private func casoYAML(_ nome: String) -> [UInt8] {
-    if let x = yamlEspeciais[nome] { return x }
-    if nome.hasPrefix("exemplos/") { return Array(try! Data(contentsOf: raizProjeto.appendingPathComponent(nome))) }
-    return SuiteYAML.bytes(nome)
+private func yamlCase(_ name: String) -> [UInt8] {
+    if let x = yamlSpecials[name] { return x }
+    if name.hasPrefix("examples/") { return Array(try! Data(contentsOf: projectRoot.appendingPathComponent(name))) }
+    return YAMLSuite.bytes(name)
 }
 
-private let casosYAML = SuiteYAML.dentro + Array(yamlEspeciais.keys).sorted() + ["exemplos/config.yaml"]
+private let yamlCases = YAMLSuite.inside + Array(yamlSpecials.keys).sorted() + ["examples/config.yaml"]
 
-@Test(arguments: casosYAML)
-func yamlSemAlteracaoMesmosBytes(_ caso: String) throws {
-    let original = casoYAML(caso)
-    var ed = Edicao(original, formato: .yaml)
-    #expect(ed.erro == nil, "\(String(describing: ed.erro))")
-    #expect(try ed.resultado() == original)
-    #expect(!ed.temAlteracoes)
-    for e in ed.documento?.entradas ?? [] {
-        try ed.definir(e.caminho, .valor(e.valor))
-        try ed.definir(e.caminho, .cru(ed.documento!.texto(e.intervalo)))
+@Test(arguments: yamlCases)
+func yamlNoChangeSameBytes(_ testCase: String) throws {
+    let original = yamlCase(testCase)
+    var ed = EditSession(original, format: .yaml)
+    #expect(ed.error == nil, "\(String(describing: ed.error))")
+    #expect(try ed.result() == original)
+    #expect(!ed.hasChanges)
+    for e in ed.document?.entries ?? [] {
+        try ed.assign(e.path, .value(e.value))
+        try ed.assign(e.path, .raw(ed.document!.text(e.range)))
     }
-    #expect(ed.alteracoes.isEmpty)
-    #expect(try ed.resultado() == original)
+    #expect(ed.changes.isEmpty)
+    #expect(try ed.result() == original)
 }
 
-/// Valor alterado para o teste: textos ganham aspas e um caractere que pede aspas duplas.
-private func mutadoYAML(_ v: Valor) -> Valor {
+/// Value changed for the test: texts get quotes and a character that requires double quotes.
+private func mutatedYAML(_ v: Value) -> Value {
     switch v {
-    case .nulo: return .texto("no")
+    case .null: return .text("no")
     case .decimal(let d) where !d.isFinite: return .decimal(2.5)
-    default: return mutado(v)!
+    default: return mutated(v)!
     }
 }
 
-@Test(arguments: casosYAML)
-func yamlMudarCadaValor(_ caso: String) throws {
-    let original = casoYAML(caso)
-    let doc = try LeitorYAML.ler(original)
-    func confere(_ e: Entrada, _ novo: Valor, _ faixa: Range<Int>, _ nome: String) {
-        let saida: [UInt8]
-        do { saida = try Gravar.aplicar(doc, alteracoes: [e.caminho: .valor(novo)]) } catch {
-            Issue.record("\(caso) \(e.caminho.texto) \(nome): \(error)")
+@Test(arguments: yamlCases)
+func yamlChangeEachValue(_ testCase: String) throws {
+    let original = yamlCase(testCase)
+    let doc = try YAMLReader.parse(original)
+    func matches(_ e: Entry, _ updated: Value, _ span: Range<Int>, _ name: String) {
+        let output: [UInt8]
+        do { output = try Writer.apply(doc, changes: [e.path: .value(updated)]) } catch {
+            Issue.record("\(testCase) \(e.path.text) \(name): \(error)")
             return
         }
-        #expect(soOTrechoMudou(original, saida, faixa), "\(caso) \(e.caminho.texto) \(nome): mudou fora do trecho")
-        guard let relido = try? LeitorYAML.ler(saida) else { Issue.record("\(caso): releitura"); return }
-        #expect(relido.valorRaiz == doc.valorRaiz.substituindo(e.caminho, por: novo)!, "\(caso) \(e.caminho.texto) \(nome)")
-        #expect(relido.temBOM == doc.temBOM && relido.quebraDeLinha == doc.quebraDeLinha)
+        #expect(onlyTheHunkChanged(original, output, span), "\(testCase) \(e.path.text) \(name): changed outside the hunk")
+        guard let reparsed = try? YAMLReader.parse(output) else { Issue.record("\(testCase): reparse"); return }
+        #expect(reparsed.rootValue == doc.rootValue.replacing(e.path, by: updated)!, "\(testCase) \(e.path.text) \(name)")
+        #expect(reparsed.hasBOM == doc.hasBOM && reparsed.lineBreak == doc.lineBreak)
     }
-    for e in doc.entradas {
-        let novo = mutadoYAML(e.valor)
-        confere(e, novo, e.intervalo, "mutado")
-        switch e.valor {
-        case .texto(let t):
-            // textos que um leitor YAML 1.1 leria como outro tipo; texto de várias linhas
-            for x in ["no", "on", "1e3", "010", "null", t + "\nlinha 2\n"] { confere(e, .texto(x), e.intervalo, x) }
-        case .lista(let itens) where !itens.isEmpty:
-            // cada item: muda só o trecho dele
-            for i in itens.indices where itens[i].tipo != .lista && itens[i].tipo != .tabela {
-                var l = itens
-                l[i] = mutadoYAML(itens[i])
-                confere(e, .lista(l), e.posicao.itens[i].intervalo, "item \(i)")
+    for e in doc.entries {
+        let updated = mutatedYAML(e.value)
+        matches(e, updated, e.range, "mutated")
+        switch e.value {
+        case .text(let t):
+            // texts that a YAML 1.1 reader would read as another type; multi-line text
+            for x in ["no", "on", "1e3", "010", "null", t + "\nline 2\n"] { matches(e, .text(x), e.range, x) }
+        case .array(let items) where !items.isEmpty:
+            // each item: only its own hunk changes
+            for i in items.indices where items[i].kind != .array && items[i].kind != .table {
+                var l = items
+                l[i] = mutatedYAML(items[i])
+                matches(e, .array(l), e.position.items[i].range, "item \(i)")
             }
-            let emBloco = doc.bytes[e.intervalo].first { $0 != 0x20 } == 0x2D
-            guard emBloco else { break }
-            // acrescentar: uma linha a mais, nada removido
-            if let saida = try? Gravar.aplicar(doc, alteracoes: [e.caminho: .valor(.lista(itens + [.texto("novo")]))]) {
-                let d = Diferenca.linhas(original, saida)
-                #expect(d.count == 1 && d[0].removidas.isEmpty && d[0].adicionadas.count == 1, "\(caso) \(e.caminho.texto): \(d)")
+            let inBlock = doc.bytes[e.range].first { $0 != 0x20 } == 0x2D
+            guard inBlock else { break }
+            // adding: one more line, nothing removed
+            if let output = try? Writer.apply(doc, changes: [e.path: .value(.array(items + [.text("new")]))]) {
+                let d = Diff.lines(original, output)
+                #expect(d.count == 1 && d[0].removed.isEmpty && d[0].added.count == 1, "\(testCase) \(e.path.text): \(d)")
             }
-            confere(e, .lista(itens + [.texto("novo")]), e.intervalo, "acrescentar")
-            // tirar cada item: só as linhas dele
-            if itens.count > 1 {
-                for i in itens.indices {
-                    var l = itens
+            matches(e, .array(items + [.text("new")]), e.range, "add")
+            // removing each item: only its lines
+            if items.count > 1 {
+                for i in items.indices {
+                    var l = items
                     l.remove(at: i)
-                    confere(e, .lista(l), e.intervalo, "tirar \(i)")
-                    if let saida = try? Gravar.aplicar(doc, alteracoes: [e.caminho: .valor(.lista(l))]) {
-                        let d = Diferenca.linhas(original, saida)
-                        #expect(d.count == 1 && d[0].adicionadas.isEmpty, "\(caso) \(e.caminho.texto) -\(i): \(d)")
+                    matches(e, .array(l), e.range, "remove \(i)")
+                    if let output = try? Writer.apply(doc, changes: [e.path: .value(.array(l))]) {
+                        let d = Diff.lines(original, output)
+                        #expect(d.count == 1 && d[0].added.isEmpty, "\(testCase) \(e.path.text) -\(i): \(d)")
                     }
                 }
             }
@@ -493,22 +493,22 @@ func yamlMudarCadaValor(_ caso: String) throws {
     }
 }
 
-// MARK: - Exemplo
+// MARK: - Example
 
-@Test func exemploYAML() throws {
-    let original = Array(try Data(contentsOf: raizProjeto.appendingPathComponent("exemplos/config.yaml")))
-    var ed = Edicao(original, formato: .yaml)
-    try ed.definir(k("pool"), .valor(.inteiro(20)))
-    try ed.definir(k("nivel_log"), .valor(.texto("aviso")))
-    try ed.definir(k("services", "web", "restart"), .valor(.texto("no")))
-    try ed.definir(k("services", "web", "ports"), .valor(.lista([.texto("8080:80"), .texto("8443:443"), .texto("9000:9000")])))
-    try ed.definir(k("manutencao"), .valor(.texto("Voltamos às 14h.\n")))
-    let r = s(try ed.resultado())
+@Test func exampleYAML() throws {
+    let original = Array(try Data(contentsOf: projectRoot.appendingPathComponent("examples/config.yaml")))
+    var ed = EditSession(original, format: .yaml)
+    try ed.assign(k("pool"), .value(.integer(20)))
+    try ed.assign(k("log_level"), .value(.text("warning")))
+    try ed.assign(k("services", "web", "restart"), .value(.text("no")))
+    try ed.assign(k("services", "web", "ports"), .value(.array([.text("8080:80"), .text("8443:443"), .text("9000:9000")])))
+    try ed.assign(k("maintenance"), .value(.text("Back online at 2 pm.\n")))
+    let r = s(try ed.result())
     #expect(r == s(original).replacingOccurrences(of: "pool: 12", with: "pool: 20")
-        .replacingOccurrences(of: "nivel_log: info", with: "nivel_log: aviso")
+        .replacingOccurrences(of: "log_level: info", with: "log_level: warning")
         .replacingOccurrences(of: "restart: unless-stopped", with: "restart: \"no\"")
         .replacingOccurrences(of: "      - \"8443:443\"\n", with: "      - \"8443:443\"\n      - \"9000:9000\"\n")
-        .replacingOccurrences(of: "  O painel está em manutenção.\n  Volte em alguns minutos.\n", with: "  Voltamos às 14h.\n"))
-    let difs = Diferenca.linhas(original, b(r))
-    #expect(difs.count == 5, "\(difs)")
+        .replacingOccurrences(of: "  The dashboard is under maintenance.\n  Please come back in a few minutes.\n", with: "  Back online at 2 pm.\n"))
+    let diffList = Diff.lines(original, b(r))
+    #expect(diffList.count == 5, "\(diffList)")
 }

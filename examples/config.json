@@ -1,0 +1,30 @@
+{
+    "title": "Kogumelo Dashboard",
+    "version": 3,
+    "server": {
+        "host": "0.0.0.0",
+        "ports": [8080, 8443],
+        "tls": true,
+        "log_level": "info"
+    },
+    "database": {
+        "driver": "firebird",
+        "pool": 12,
+        "factor": 1.50,
+        "limit": 1e3,
+        "password_file": null
+    },
+    "tasks": [
+        {
+            "name": "backup",
+            "cron": "0 3 * * *",
+            "enabled": true,
+            "environment": { "DESTINATION": "/mnt/backup" }
+        },
+        {
+            "name": "clean-logs",
+            "cron": "0 4 * * 0",
+            "enabled": false
+        }
+    ]
+}
