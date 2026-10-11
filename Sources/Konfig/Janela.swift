@@ -179,27 +179,7 @@ struct Formulario: View {
                 Button(modelo.edicao.somenteTexto ? "Editar no modo Texto" : "Corrigir no modo Texto") { modelo.trocarModo(.texto) }
             }
         } else if modelo.selecao == ModeloJanela.idAbertura, let c = modelo.comentarioDeAbertura {
-            Form {
-                Section {
-                    // monoespaçado, como no arquivo: listas e recuos do comentário ficam alinhados
-                    Text(c)
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } header: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Sobre o arquivo")
-                            .font(.title2.bold())
-                            .foregroundStyle(.primary)
-                        Text("comentário do começo do arquivo · para mudar, use o modo Texto")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                    }
-                    .textCase(nil)
-                    .padding(.bottom, 4)
-                }
-            }
-            .formStyle(.grouped)
+            PaginaAbertura(modelo: modelo, comentario: c)
         } else if let s = modelo.secaoSelecionada {
             Form {
                 Section {
@@ -246,6 +226,72 @@ struct Formulario: View {
         var t = s.subtitulo
         if let i = s.indiceItem, let n = s.totalItens { t += " · item \(i + 1) de \(n)" }
         return t
+    }
+}
+
+/// "Sobre o arquivo": o comentário de abertura, editável. Vale ao sair da caixa ou em Aplicar;
+/// cada aplicação entra no desfazer do documento (as digitações, não).
+struct PaginaAbertura: View {
+    let modelo: ModeloJanela
+    let comentario: String
+    @State private var rascunho = ""
+    @FocusState private var focado: Bool
+
+    var difere: Bool { rascunho != comentario }
+
+    var body: some View {
+        Form {
+            Section {
+                // monoespaçado, como no arquivo: listas e recuos do comentário ficam alinhados
+                TextEditor(text: $rascunho)
+                    .font(.callout.monospaced())
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 260)
+                    .focused($focado)
+                    .onChange(of: focado) { _, f in if !f { aplicar() } }
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sobre o arquivo")
+                        .font(.title2.bold())
+                        .foregroundStyle(.primary)
+                    Text("comentário do começo do arquivo, sem o \(marcador) de cada linha")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                .textCase(nil)
+                .padding(.bottom, 4)
+            } footer: {
+                HStack {
+                    Text("Vale ao sair da caixa ou em Aplicar. Texto vazio apaga o comentário.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Descartar") { rascunho = comentario }
+                        .disabled(!difere)
+                    Button("Aplicar", action: aplicar)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .disabled(!difere)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { rascunho = comentario }
+        // desfazer, modo Texto ou outro programa mudou o comentário
+        .onChange(of: comentario) { _, c in rascunho = c }
+    }
+
+    var marcador: String {
+        switch modelo.formato {
+        case .ini: return "; ou #"
+        case .json, .json5: return "//"
+        default: return "#"
+        }
+    }
+
+    func aplicar() {
+        guard difere else { return }
+        modelo.trocarAbertura(rascunho)
+        // só espaços no fim ou linhas vazias nas pontas: o arquivo não muda, a caixa volta
+        if modelo.comentarioDeAbertura == comentario { rascunho = comentario }
     }
 }
 

@@ -144,6 +144,13 @@ final class ModeloJanela {
 
     func desfazer() { documento?.undoManager?.undo() }
 
+    /// Troca o comentário de abertura, mantendo os valores alterados no formulário e ainda não salvos.
+    func trocarAbertura(_ novo: String) {
+        let atual = (try? edicao.resultado()) ?? edicao.base
+        guard let bytes = Abertura.trocar(atual, formato: formato, por: novo), bytes != atual else { return }
+        documento?.aplicarTexto(bytes, nome: "Editar comentário")
+    }
+
     // MARK: Modo Texto
 
     func entrarModoTexto() {
@@ -358,7 +365,7 @@ final class Documento: NSDocument {
         undoManager?.setActionName("Alterar \(rotulo)")
     }
 
-    func aplicarTexto(_ bytes: [UInt8]) {
+    func aplicarTexto(_ bytes: [UInt8], nome: String = "Editar texto") {
         let antes = modelo.edicao.instantaneo
         do {
             try modelo.alterarEdicao { try $0.trocarTexto(bytes) }
@@ -366,7 +373,7 @@ final class Documento: NSDocument {
             presentError(error)
             return
         }
-        registrarRestauracao(antes, nome: "Editar texto")
+        registrarRestauracao(antes, nome: nome)
     }
 
     private func restaurar(_ i: Edicao.Instantaneo, nome: String) {
