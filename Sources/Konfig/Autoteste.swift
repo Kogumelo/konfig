@@ -207,10 +207,27 @@ enum Autoteste {
             registra((try? m.edicao.resultado()).map { Data($0) } == original, "abrir sem alterar: mesmos bytes")
             if m.comentarioDeAbertura != nil { m.selecao = ModeloJanela.idAbertura }
         }
+        var abertura: String?
         passo(0.8) {
-            if let c = m.comentarioDeAbertura {
-                foto(janela, saida.appendingPathComponent("0-abertura.png"))
-                registra(true, "comentário de abertura em 'Sobre o arquivo': \(c.split(separator: "\n").first ?? "")")
+            abertura = m.comentarioDeAbertura
+            guard let c = abertura else { return }
+            foto(janela, saida.appendingPathComponent("0-abertura.png"))
+            registra(true, "comentário de abertura em 'Sobre o arquivo': \(c.split(separator: "\n").first ?? "")")
+            comoEvento(doc) { m.trocarAbertura(c + "\nlinha do autoteste") }
+        }
+        passo(0.5) {
+            guard let c = abertura else { return }
+            let t = m.trechos
+            registra(m.comentarioDeAbertura == c + "\nlinha do autoteste"
+                     && t.count == 1 && t[0].trecho.removidas.isEmpty && t[0].trecho.adicionadas.count == 1,
+                     "editar o comentário de abertura: só uma linha nova (\(t.first?.trecho.adicionadas.first ?? "-"))")
+            foto(janela, saida.appendingPathComponent("0-abertura-editada.png"))
+            comoEvento(doc) { doc.undoManager?.undo() }
+        }
+        passo(0.5) {
+            if let c = abertura {
+                registra(m.comentarioDeAbertura == c && (try? m.edicao.resultado()).map { Data($0) } == original,
+                         "⌘Z desfez a edição do comentário")
             }
             m.selecao = r.secao
         }

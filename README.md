@@ -128,7 +128,10 @@ Aberto sem arquivo, o app mostra o painel de abrir.
   Comentário só vira ajuda se estiver colado à linha (sem linha em branco no meio).
   O comentário do começo do arquivo, separado da primeira chave ou seção por uma
   linha em branco, não é de nenhum campo: aparece em **Sobre o arquivo**, no topo
-  da barra lateral, como está no arquivo (recuos mantidos), só para leitura.
+  da barra lateral, como está no arquivo (recuos mantidos), e pode ser editado ali:
+  vale ao sair da caixa ou em Aplicar (⌘Return), entra no ⌘Z e, ao gravar, só as
+  linhas de comentário que mudaram são reescritas (linha nova ganha o marcador da
+  primeira linha do comentário, `#`, `;` ou `//`). Texto vazio apaga o comentário.
   Comentários soltos no meio do arquivo (com linha em branco antes da chave
   seguinte) continuam só no modo Texto.
 - **Texto** (⌘2): o arquivo inteiro editável, com cores simples (em JSON, JSONC e
