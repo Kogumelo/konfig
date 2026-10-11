@@ -4,5 +4,5 @@ Licença MIT: ver LICENSE nesta pasta.
 
 y_*  JSON válido: o leitor precisa aceitar.
 n_*  JSON inválido: o leitor estrito precisa recusar.
-i_*  a especificação deixa a critério de quem lê; o que o km-conf faz com
+i_*  a especificação deixa a critério de quem lê; o que o Konfig faz com
      cada um está em JSONTests.swift (casosI) e no README.

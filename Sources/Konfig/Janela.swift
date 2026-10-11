@@ -130,7 +130,7 @@ struct BarraLateral: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12).padding(.vertical, 6)
                     .help("Este .json tem comentários ou vírgula final (JSONC, como o settings.json do VS Code "
-                          + "e o tsconfig.json). O km-conf mantém tudo ao gravar, mas nem todo programa que lê "
+                          + "e o tsconfig.json). O Konfig mantém tudo ao gravar, mas nem todo programa que lê "
                           + "JSON aceita esse arquivo.")
             }
         }

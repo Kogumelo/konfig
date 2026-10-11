@@ -1,4 +1,4 @@
-# Exemplo do km-conf no estilo de um docker-compose.yml.
+# Exemplo do Konfig no estilo de um docker-compose.yml.
 # Os comentários acima de uma chave (ou no fim da linha) viram a ajuda do campo.
 ---
 name: painel-kogumelo

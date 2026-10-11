@@ -233,7 +233,7 @@ private final class AnalisadorYAML {
     }
 
     func fora(_ msg: String, em off: Int) -> ErroLeitura {
-        var e = erro("\(msg) está fora do subconjunto que o km-conf edita pelo formulário; o arquivo abre só no modo Texto",
+        var e = erro("\(msg) está fora do subconjunto que o Konfig edita pelo formulário; o arquivo abre só no modo Texto",
                      em: off)
         e.foraDoSubconjunto = true
         return e

@@ -227,7 +227,7 @@ final class Documento: NSDocument {
         let wc = NSWindowController(window: janela)
         wc.shouldCascadeWindows = true
         addWindowController(wc)
-        janela.setFrameAutosaveName("km-conf.janela")
+        janela.setFrameAutosaveName("konfig.janela")
         if fileURL == nil { janela.center() }
     }
 

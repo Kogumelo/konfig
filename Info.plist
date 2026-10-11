@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>km-conf</string>
+	<string>Konfig</string>
 	<key>CFBundleDisplayName</key>
-	<string>km-conf</string>
+	<string>Konfig</string>
 	<key>CFBundleIdentifier</key>
-	<string>br.com.kogut.km-conf</string>
+	<string>br.com.kogut.konfig</string>
 	<key>CFBundleExecutable</key>
-	<string>km-conf</string>
+	<string>Konfig</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,7 +29,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Ferramenta pessoal km-*. Casos de teste do toml-test, da JSONTestSuite, do json5-tests e da yaml-test-suite sob licença MIT.</string>
+	<string>© 2026 Kogumelo Informática Ltda. Licença MIT. Casos de teste do toml-test, da JSONTestSuite, do json5-tests e da yaml-test-suite sob licença MIT.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -56,7 +56,7 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.json</string>
-				<string>br.com.kogut.km-conf.jsonc</string>
+				<string>br.com.kogut.konfig.jsonc</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
@@ -70,7 +70,7 @@
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>br.com.kogut.km-conf.json5</string>
+				<string>br.com.kogut.konfig.json5</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
@@ -84,7 +84,7 @@
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>br.com.kogut.km-conf.env</string>
+				<string>br.com.kogut.konfig.env</string>
 			</array>
 			<key>NSDocumentClass</key>
 			<string>Documento</string>
@@ -98,7 +98,7 @@
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>br.com.kogut.km-conf.ini</string>
+				<string>br.com.kogut.konfig.ini</string>
 				<!-- tipo que o Xcode declara para .ini; quando o Xcode está instalado, é o que o sistema usa -->
 				<string>com.microsoft.ini</string>
 			</array>
@@ -153,7 +153,7 @@
 			     oferece os editores de texto. Também evita que programas que só leem JSON
 			     estrito se ofereçam para abrir. Testado no macOS 26 (ver README). -->
 			<key>UTTypeIdentifier</key>
-			<string>br.com.kogut.km-conf.jsonc</string>
+			<string>br.com.kogut.konfig.jsonc</string>
 			<key>UTTypeDescription</key>
 			<string>JSON com comentários (JSONC)</string>
 			<key>UTTypeConformsTo</key>
@@ -171,7 +171,7 @@
 		<dict>
 			<!-- JSON5 (spec.json5.org): mesmo raciocínio do JSONC. -->
 			<key>UTTypeIdentifier</key>
-			<string>br.com.kogut.km-conf.json5</string>
+			<string>br.com.kogut.konfig.json5</string>
 			<key>UTTypeDescription</key>
 			<string>JSON5</string>
 			<key>UTTypeConformsTo</key>
@@ -194,7 +194,7 @@
 			<!-- O macOS não declara .env. A extensão só cobre "producao.env"; ".env" (sem
 			     extensão para o sistema) e ".env.local" são reconhecidos pelo nome, no app. -->
 			<key>UTTypeIdentifier</key>
-			<string>br.com.kogut.km-conf.env</string>
+			<string>br.com.kogut.konfig.env</string>
 			<key>UTTypeDescription</key>
 			<string>Variáveis de ambiente (.env)</string>
 			<key>UTTypeConformsTo</key>
@@ -214,7 +214,7 @@
 			     raciocínio do JSONC: derivado de public.plain-text. O ".editorconfig" (sem
 			     extensão para o sistema) é reconhecido pelo nome, no app. -->
 			<key>UTTypeIdentifier</key>
-			<string>br.com.kogut.km-conf.ini</string>
+			<string>br.com.kogut.konfig.ini</string>
 			<key>UTTypeDescription</key>
 			<string>Configuração INI</string>
 			<key>UTTypeConformsTo</key>

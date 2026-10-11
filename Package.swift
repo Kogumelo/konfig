@@ -16,11 +16,11 @@ var targets: [Target] = [
 
 #if os(macOS)
 // O app (AppKit + SwiftUI) só existe no Mac; no Linux, `swift test` compila só o núcleo.
-products.append(.executable(name: "km-conf", targets: ["km-conf"]))
+products.append(.executable(name: "Konfig", targets: ["Konfig"]))
 targets.append(
     // Modo de linguagem 5: NSDocument ainda não tem anotações de concorrência completas.
     .executableTarget(
-        name: "km-conf",
+        name: "Konfig",
         dependencies: ["ConfCore"],
         swiftSettings: [.swiftLanguageMode(.v5)]
     )
@@ -28,7 +28,7 @@ targets.append(
 #endif
 
 let package = Package(
-    name: "km-conf",
+    name: "Konfig",
     platforms: [.macOS(.v14)],
     products: products,
     targets: targets
