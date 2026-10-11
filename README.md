@@ -14,6 +14,10 @@ field of the right type and, on save, replaces **only the bytes of the values th
 changed**: comments, order, whitespace, quotes, escapes, number style, CRLF
 and BOM stay exactly as they were.
 
+![Konfig editing examples/config.toml: sections in the sidebar, the fields of the
+server section with their types, and the "Unsaved changes" panel with the three lines that
+will change on save](docs/screenshots/form-en.png)
+
 Swift/AppKit + SwiftUI, no dependencies. The parsers are its own (they need to know
 where each value sits in the text): the TOML 1.0 parser passes the official
 [toml-test](https://github.com/toml-lang/toml-test) suite; the JSON parser passes the
@@ -711,6 +715,16 @@ new line and nothing else) and undoes it; a copy of `config.ini` named `.editorc
 checks that ⌘S keeps the name (it does not save `.editorconfig.ini`). For YAML, it does the same with the
 block sequence `services.web.ports` and checks that a text with an anchor gives an "outside the subset" notice
 (not an error) in Text mode.
+
+The screenshot at the top of this README is `2-changed.png` from the TOML run, with the
+interface in each language and a fixed window size (the `-AppleLanguages` and frame
+arguments override the preferences only for that run):
+
+```sh
+KONFIG_SELFTEST="/tmp/x/config.toml|/tmp/x/out-en" Konfig.app/Contents/MacOS/Konfig \
+  -AppleLanguages "(en)" "-NSWindow Frame konfig.janela" "100 100 1200 620 0 0 2560 1050 "
+cp /tmp/x/out-en/2-changed.png docs/screenshots/form-en.png    # and (pt-BR) → form-pt-BR.png
+```
 
 ## Coming from km-conf
 
