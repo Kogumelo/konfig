@@ -14,6 +14,10 @@ campo do tipo certo e, ao salvar, troca no arquivo **só os trechos dos valores
 alterados**: comentários, ordem, espaços, aspas, escapes, forma dos números, CRLF
 e BOM ficam exatamente como estavam.
 
+![Konfig editando examples/config.toml: seções na barra lateral, os campos da
+seção server com seus tipos e o painel "Alterações não salvas" com as três linhas que
+mudam ao salvar](docs/screenshots/form-pt-BR.png)
+
 Swift/AppKit + SwiftUI, sem dependências. Os leitores são próprios (precisam saber
 a posição de cada valor no texto): o de TOML 1.0 passa na suíte oficial
 [toml-test](https://github.com/toml-lang/toml-test); o de JSON passa na
@@ -711,6 +715,16 @@ linha nova e nada mais) e desfaz; uma cópia do `config.ini` chamada `.editorcon
 confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`). No YAML, faz o mesmo com a lista
 em bloco `services.web.ports` e confere que um texto com âncora dá aviso de "fora do subconjunto"
 (não erro) no modo Texto.
+
+A tela no início deste README é a `2-changed.png` da rodada de TOML, com a interface
+em cada idioma e a janela num tamanho fixo (os argumentos `-AppleLanguages` e de
+moldura valem só para essa execução):
+
+```sh
+KONFIG_SELFTEST="/tmp/x/config.toml|/tmp/x/out-pt" Konfig.app/Contents/MacOS/Konfig \
+  -AppleLanguages "(pt-BR)" "-NSWindow Frame konfig.janela" "100 100 1200 620 0 0 2560 1050 "
+cp /tmp/x/out-pt/2-changed.png docs/screenshots/form-pt-BR.png    # e (en) → form-en.png
+```
 
 ## Vindo do km-conf
 
