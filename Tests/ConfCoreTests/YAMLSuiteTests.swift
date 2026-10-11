@@ -86,7 +86,7 @@ enum SuiteYAML {
     static let fora = casos.filter { classe($0) == .fora }
     static let erros = casos.filter { classe($0) == .erro }
 
-    /// Casos dentro do subconjunto que o km-conf recusa, cada um com o motivo. Precisa
+    /// Casos dentro do subconjunto que o Konfig recusa, cada um com o motivo. Precisa
     /// continuar vazio ou com motivo documentado (o teste confere os dois sentidos).
     static let recusadosDentro: [String: String] = [:]
 

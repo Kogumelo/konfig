@@ -1,17 +1,17 @@
 #!/bin/zsh
-# Compila o km-conf e monta o bundle .app (assinatura ad-hoc, uso local).
+# Compila o Konfig e monta o bundle .app (assinatura ad-hoc, uso local).
 set -e
 cd "$(dirname "$0")"
 
-swift build -c release --product km-conf
-BIN="$(swift build -c release --show-bin-path)/km-conf"
+swift build -c release --product Konfig
+BIN="$(swift build -c release --show-bin-path)/Konfig"
 
-APP=km-conf.app
+APP=Konfig.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/pt-BR.lproj"
 cp Info.plist "$APP/Contents/Info.plist"
-cp "$BIN" "$APP/Contents/MacOS/km-conf"
+cp "$BIN" "$APP/Contents/MacOS/Konfig"
 # pasta de idioma: faz o AppKit usar português nos textos prontos ("Editado", avisos)
-printf '"CFBundleName" = "km-conf";\n' > "$APP/Contents/Resources/pt-BR.lproj/InfoPlist.strings"
+printf '"CFBundleName" = "Konfig";\n' > "$APP/Contents/Resources/pt-BR.lproj/InfoPlist.strings"
 codesign --force --sign - "$APP"
 
 echo "OK: $PWD/$APP"

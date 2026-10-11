@@ -1,6 +1,6 @@
 Arquivos INI de teste.
 
-Próprios (escritos para o km-conf, uma regra do dialeto por linha):
+Próprios (escritos para o Konfig, uma regra do dialeto por linha):
   regras.ini, listas.ini, bom-crlf.ini
 
 De terceiros (copiados sem alteração, exceto o recorte de linhas do php.ini):

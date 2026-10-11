@@ -41,7 +41,7 @@ private let raizProjeto = URL(fileURLWithPath: #filePath).deletingLastPathCompon
 @Test func envRegrasBasicas() throws {
     let doc = try LeitorEnv.ler(FixturesEnv.bytes("basico.env"))
     let v = valores(doc)
-    #expect(v["APP_NOME"] == "km-conf")
+    #expect(v["APP_NOME"] == "Konfig")
     #expect(v["APP_PORTA"] == "8080", "export na frente")
     #expect(v["INDENTADA"] == "sim")
     #expect(v["ESPACOS_NO_IGUAL"] == "valor com espacos", "espaços nas pontas não contam")
@@ -173,8 +173,8 @@ func envErrosComLinhaEColuna(_ caso: (String, Int, Int, String)) {
     #expect(URL(fileURLWithPath: "/tmp/.env.local").pathExtension == "local")
     #expect(URL(fileURLWithPath: "/tmp/producao.env").pathExtension == "env")
     #if os(macOS)
-    // Tipo de arquivo que o sistema dá (sem o km-conf registrado): `.env` é "dados" genéricos.
-    let pasta = FileManager.default.temporaryDirectory.appendingPathComponent("km-conf-env-\(UUID().uuidString)")
+    // Tipo de arquivo que o sistema dá (sem o Konfig registrado): `.env` é "dados" genéricos.
+    let pasta = FileManager.default.temporaryDirectory.appendingPathComponent("konfig-env-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: pasta, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: pasta) }
     var tipos: [String: String] = [:]
@@ -184,7 +184,7 @@ func envErrosComLinhaEColuna(_ caso: (String, Int, Int, String)) {
         tipos[n] = try u.resourceValues(forKeys: [.contentTypeKey]).contentType?.identifier ?? "-"
     }
     #expect(tipos[".env"] == "public.data", "\(tipos)")
-    #expect(tipos[".env.local"]?.hasPrefix("dyn.") == true || tipos[".env.local"] == "br.com.kogut.km-conf.env",
+    #expect(tipos[".env.local"]?.hasPrefix("dyn.") == true || tipos[".env.local"] == "br.com.kogut.konfig.env",
             "\(tipos)")
     #endif
 }

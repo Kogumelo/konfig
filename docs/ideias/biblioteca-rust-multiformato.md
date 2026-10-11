@@ -1,7 +1,7 @@
 # Ideia arquivada: biblioteca Rust multi-formato para editar configuração sem perda
 
 **Situação:** arquivada em 2026-10-10. Nenhum código foi escrito.
-**Decisão:** o km-conf segue como **app visual multi-formato** (Swift). A biblioteca
+**Decisão:** o Konfig segue como **app visual multi-formato** (Swift). A biblioteca
 em Rust não segue.
 **Origem:** bloco "Núcleo em Rust" do Sitroom: missão de pesquisa `941f79c0` e
 missão de experimento `c12e0096`. O experimento foi cancelado antes de começar.
@@ -14,7 +14,7 @@ alguém possa retomá-la se surgir um fato novo, sem refazer o caminho.
 Uma biblioteca open-source escrita inteiramente em Rust que lê, edita e grava
 vários formatos de configuração (TOML, JSON/JSONC e, mais tarde, YAML, INI e .env)
 **sem perder comentários nem formatação**. Ao gravar, ela troca só os bytes dos
-valores alterados, que é a mesma garantia do núcleo `Sources/ConfCore` do km-conf.
+valores alterados, que é a mesma garantia do núcleo `Sources/ConfCore` do Konfig.
 
 A premissa tinha duas metades:
 
@@ -87,7 +87,7 @@ Relatório completo da pesquisa: cartão `941f79c0` no Sitroom
 Era um experimento de uma tarde, para decidir se a ideia continuava. Fica
 registrado aqui caso seja retomado.
 
-- **Onde:** pasta local nova, `~/Kogumelo/Ferramentas/km-conf-rs`, com `git init`.
+- **Onde:** pasta local nova, `~/Kogumelo/Ferramentas/konfig-rs`, com `git init`.
   Nada no GitHub nem no crates.io sem o operador autorizar. O projeto Swift não
   seria tocado.
 - **API mínima, igual para os dois formatos:** abrir a partir dos bytes; ler um
@@ -98,7 +98,7 @@ registrado aqui caso seja retomado.
   final opcional, espaços e ordem preservados; ao mudar um valor, só o trecho dele
   muda).
 - **Testes:**
-  - toml-test (copiar `Tests/ConfCoreTests/Fixtures` do km-conf): válidos aceitos,
+  - toml-test (copiar `Tests/ConfCoreTests/Fixtures` do Konfig): válidos aceitos,
     inválidos recusados e abrir/gravar sem mudança idêntico byte a byte;
   - JSON: casos com comentários, CRLF, BOM, escapes Unicode, números grandes e
     decimais, mais a [JSONTestSuite](https://github.com/nst/JSONTestSuite);
@@ -124,12 +124,12 @@ Reabrir só com um fato novo, por exemplo:
   (a suíte toml-test, a JSONTestSuite, arquivos com CRLF, BOM, escapes) e que
   `toml_edit` + `jsonc-parser` não resolvem esses casos;
 - o edikt ou o fig serem abandonados e houver gente usando;
-- o app km-conf precisar rodar fora do Mac (Linux, Windows, navegador via
+- o app Konfig precisar rodar fora do Mac (Linux, Windows, navegador via
   WebAssembly), o que tornaria um núcleo portável em Rust útil para o próprio app;
 - pedidos explícitos por uma biblioteca assim (issues, discussões), coisa que a
   pesquisa não encontrou.
 
-A vantagem que o km-conf já tem e que nenhum concorrente publica é a
+A vantagem que o Konfig já tem e que nenhum concorrente publica é a
 **conformidade verificada contra suítes oficiais** (toml-test e JSONTestSuite). Se
 a ideia voltar, é por aí que ela se diferencia, não por ser a primeira.
 

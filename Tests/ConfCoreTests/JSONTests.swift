@@ -36,7 +36,7 @@ enum SuiteJSON {
         "n_structure_object_with_comment.json",        // {"a":/*comment*/"b"}
     ]
 
-    /// O que o km-conf faz com cada caso `i_` (a especificação deixa a critério de quem lê).
+    /// O que o Konfig faz com cada caso `i_` (a especificação deixa a critério de quem lê).
     /// `true` = aceita. Documentado no README.
     static let casosI: [String: Bool] = [
         // números fora do alcance: aceitos; inteiro que não cabe em 64 bits vira decimal

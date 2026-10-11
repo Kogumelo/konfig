@@ -1,7 +1,7 @@
 import AppKit
 import ConfCore
 
-/// `KM_CONF_AUTOTESTE="<arquivo>|<pasta-de-saída>" km-conf.app/Contents/MacOS/km-conf`
+/// `KONFIG_AUTOTESTE="<arquivo>|<pasta-de-saída>" Konfig.app/Contents/MacOS/Konfig`
 ///
 /// O arquivo é uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
 /// `exemplos/config.jsonc`, `exemplos/settings.jsonc`, `exemplos/config.json5` ou

@@ -1,4 +1,4 @@
-# km-conf
+# Konfig
 
 Editor de arquivos de configuração nativo para Mac: **TOML**, **JSON**, **JSONC**
 (JSON com comentários e vírgula final, o de `tsconfig.json` e `.vscode/settings.json`),
@@ -19,15 +19,17 @@ passa na suíte oficial [json5-tests](https://github.com/json5/json5-tests) (os 
 casos válidos aceitos e os 31 inválidos recusados, nenhum deixado de fora). O JSONC
 não tem suíte oficial: há arquivos próprios em `Tests/ConfCoreTests/Fixtures/jsonc/`.
 O de `.env` segue as regras do `dotenv` (Node/Ruby), escritas em [Regras do .env](#regras-do-env).
-O INI não tem norma: o km-conf aceita um dialeto fixo, descrito em [Dialeto INI](#dialeto-ini) e
+O INI não tem norma: o Konfig aceita um dialeto fixo, descrito em [Dialeto INI](#dialeto-ini) e
 testado com arquivos próprios, com `.editorconfig` do projeto EditorConfig e com um trecho do
 `php.ini-production` do PHP (`Tests/ConfCoreTests/Fixtures/ini/`).
 O de YAML é testado com a suíte oficial [yaml-test-suite](https://github.com/yaml/yaml-test-suite)
 (os 192 casos dentro do [subconjunto aceito](#yaml) lidos com os valores esperados, os 94 casos
 inválidos recusados e os 116 que usam o que fica de fora recusados ou lidos sem diferença).
 
-Parte do ecossistema de utilitários `km-*` (ver também `km-clip`). Chamava-se
-`km-toml`; o nome mudou porque o plano é editar vários formatos. Hoje: TOML, JSON,
+Parte da família de ferramentas da Kogumelo, que têm nome próprio começando por K
+(ver também a Katraca). Chamava-se `km-toml` e depois `km-conf`: o primeiro nome mudou
+porque o plano é editar vários formatos; o segundo, em 11/10/2026, quando as ferramentas
+trocaram o prefixo `km-` pela inicial K. Hoje: TOML, JSON,
 JSONC, JSON5, .env, INI e YAML (ver [Próximos formatos](#próximos-formatos)).
 
 ## Compilar
@@ -36,7 +38,7 @@ JSONC, JSON5, .env, INI e YAML (ver [Próximos formatos](#próximos-formatos)).
 ./build.sh
 ```
 
-Gera `km-conf.app` nesta pasta, assinado localmente (`codesign --sign -`).
+Gera `Konfig.app` nesta pasta, assinado localmente (`codesign --sign -`).
 Precisa do Xcode (Swift 6) e roda no macOS 14 ou mais novo. O build em release
 demora alguns minutos.
 
@@ -57,16 +59,16 @@ docker run --rm -v "$PWD":/src:ro swift:6.0 \
 ## Usar
 
 ```sh
-open -a "$PWD/km-conf.app" exemplos/config.toml
-open -a "$PWD/km-conf.app" exemplos/config.json
-open -a "$PWD/km-conf.app" exemplos/config.jsonc
-open -a "$PWD/km-conf.app" exemplos/settings.jsonc
-open -a "$PWD/km-conf.app" exemplos/config.json5
-open -a "$PWD/km-conf.app" exemplos/.env
-open -a "$PWD/km-conf.app" exemplos/config.ini
-open -a "$PWD/km-conf.app" exemplos/config.yaml
+open -a "$PWD/Konfig.app" exemplos/config.toml
+open -a "$PWD/Konfig.app" exemplos/config.json
+open -a "$PWD/Konfig.app" exemplos/config.jsonc
+open -a "$PWD/Konfig.app" exemplos/settings.jsonc
+open -a "$PWD/Konfig.app" exemplos/config.json5
+open -a "$PWD/Konfig.app" exemplos/.env
+open -a "$PWD/Konfig.app" exemplos/config.ini
+open -a "$PWD/Konfig.app" exemplos/config.yaml
 # ou
-open km-conf.app --args exemplos/config.toml
+open Konfig.app --args exemplos/config.toml
 ```
 
 O formato vem do nome do arquivo: extensão `.toml`, `.json`, `.jsonc`, `.json5`, `.ini`, `.yaml` ou `.yml`
@@ -84,7 +86,7 @@ motivo: muitos arquivos de configuração com extensão `.json` são, na prátic
 `devcontainer.json`, o `.eslintrc.json`. Recusá-los deixaria o app inútil justamente
 para eles, e o dono do arquivo já escolheu o dialeto (o programa que o lê aceita
 comentários). O aviso existe porque o contrário não vale: nem todo programa que lê
-JSON aceita comentário, e o nome do arquivo não conta isso a ninguém. O km-conf nunca
+JSON aceita comentário, e o nome do arquivo não conta isso a ninguém. O Konfig nunca
 transforma um JSON puro em JSONC: um valor cru com comentário num `.json` sem
 comentários é recusado ao gravar. Já o JSON5 só vale com a extensão `.json5` (um
 `.json` com chave sem aspas é recusado, com linha e coluna).
@@ -92,7 +94,7 @@ comentários é recusado ao gravar. Já o JSON5 só vale com a extensão `.json5
 No painel de abrir (⌘O), todo arquivo pode ser escolhido; arquivos que começam com
 ponto (`.env`) ficam ocultos no painel até ⌘⇧. (Comando-Shift-ponto).
 
-(O `open -a` não aceita caminho relativo como `./km-conf.app`; use o caminho completo.)
+(O `open -a` não aceita caminho relativo como `./Konfig.app`; use o caminho completo.)
 
 Aberto sem arquivo, o app mostra o painel de abrir.
 
@@ -158,15 +160,15 @@ O app usa o sistema de documentos do macOS, então:
 
 O app declara que edita `.toml` (tipo `public.toml`), `.json` (`public.json`),
 `.jsonc`, `.json5`, `.env` e `.ini` (o macOS não declara estes quatro; o app declara
-`br.com.kogut.km-conf.jsonc`, `br.com.kogut.km-conf.json5`,
-`br.com.kogut.km-conf.env` e `br.com.kogut.km-conf.ini`, derivados de
+`br.com.kogut.konfig.jsonc`, `br.com.kogut.konfig.json5`,
+`br.com.kogut.konfig.env` e `br.com.kogut.konfig.ini`, derivados de
 `public.plain-text`), sempre com papel Editor e `LSHandlerRank` Alternate: **não**
 se registra como padrão.
 
 Para `.ini` há um detalhe: o **Xcode** importa o tipo `com.microsoft.ini` (derivado de
 `public.text`) e, numa máquina com Xcode, é esse o tipo que o sistema dá aos arquivos
-`.ini` (conferido no macOS 26 com `lsregister -dump`). Por isso o km-conf declara que
-edita os dois, `br.com.kogut.km-conf.ini` e `com.microsoft.ini`: com ou sem Xcode, ele
+`.ini` (conferido no macOS 26 com `lsregister -dump`). Por isso o Konfig declara que
+edita os dois, `br.com.kogut.konfig.ini` e `com.microsoft.ini`: com ou sem Xcode, ele
 aparece em "Abrir com". O `.editorconfig` não tem extensão para o sistema; como o
 `.env`, é reconhecido pelo nome dentro do app (`open -a`, ⌘O ou arrastar para o ícone).
 
@@ -178,17 +180,17 @@ nenhum; o "Abrir com" do texto puro oferece os editores de texto (TextEdit, Xcod
 e, como JSONC e JSON5 não são JSON válido, é melhor que programas que só aceitam
 JSON estrito não se ofereçam para abri-los. Os dois tipos têm prévia no Quick Look. O tipo `.env` declarado só cobre nomes como
 `producao.env`: `.env` e `.env.local` não têm extensão `env` para o sistema, então o
-Finder não os associa ao km-conf; abra-os pelo `open -a`, pelo ⌘O do app ou
+Finder não os associa ao Konfig; abra-os pelo `open -a`, pelo ⌘O do app ou
 arrastando para o ícone. Para associar uma extensão:
 
-1. Copie `km-conf.app` para `/Applications` (opcional, mas assim ele não depende desta pasta).
+1. Copie `Konfig.app` para `/Applications` (opcional, mas assim ele não depende desta pasta).
 2. No Finder, selecione um arquivo da extensão › Arquivo › Obter Informações (⌘I).
-3. Em "Abrir com", escolha km-conf e clique em **Alterar Tudo…**.
+3. Em "Abrir com", escolha Konfig e clique em **Alterar Tudo…**.
 
 Sem isso, ele aparece em "Abrir com" (botão direito no arquivo).
 
 Para YAML não há tipo a declarar: o macOS já tem `public.yaml` (extensões `.yaml` e `.yml`,
-derivado de `public.text`; conferido no macOS 26 com `UTType(filenameExtension:)`). O km-conf
+derivado de `public.text`; conferido no macOS 26 com `UTType(filenameExtension:)`). O Konfig
 só diz que o edita, também com papel Editor e `LSHandlerRank` Alternate.
 
 ## Limitações
@@ -281,7 +283,7 @@ conta só LF e sai errada.
 
 ### Regras do .env
 
-Não há norma oficial; estas são as regras exatas que o km-conf aceita, escolhidas
+Não há norma oficial; estas são as regras exatas que o Konfig aceita, escolhidas
 pelo que o `dotenv` do Node e o do Ruby fazem em comum.
 
 - Arquivo em UTF-8, com ou sem BOM; quebras LF ou CRLF (mantidas ao gravar).
@@ -338,7 +340,7 @@ Ao gravar, o tipo de aspas se mantém:
 ### Dialeto INI
 
 INI não tem norma: o Windows (`GetPrivateProfileString`), o PHP (`parse_ini_file`),
-o Python (`configparser`) e o Git (`git config`) seguem regras diferentes. O km-conf
+o Python (`configparser`) e o Git (`git config`) seguem regras diferentes. O Konfig
 aceita exatamente estas, escolhidas para abrir sem surpresa os arquivos mais comuns
 (`php.ini`, `.editorconfig`, `desktop.ini`, arquivos de jogos e programas Windows) e
 para nunca adivinhar: o que é ambíguo é recusado, com linha e coluna, em vez de ser
@@ -403,7 +405,7 @@ mudada nestes pontos):
 - O nome da seção vai até o **primeiro `]` seguido só de espaços ou comentário**, e
   não até o primeiro `]`: o `.editorconfig` usa globs com colchetes, como `[*.[ch]]`.
 - O valor gravado sem aspas também não pode ter `;` em lugar nenhum (nem colado), porque
-  o PHP corta o valor no `;`: `a = b;c` é lido pelo km-conf como `b;c`, mas um valor
+  o PHP corta o valor no `;`: `a = b;c` é lido pelo Konfig como `b;c`, mas um valor
   novo `b;c` é gravado como `"b;c"`, que os dois leem igual.
 
 **Fora do dialeto** (e como aparecem se o arquivo os tiver):
@@ -415,20 +417,20 @@ mudada nestes pontos):
 - **Interpolação** `%(x)s` (Python) e `${x}` (PHP, Python `ExtendedInterpolation`):
   fica como texto, sem expandir (`%(home)s/bin` é exatamente esse texto).
 - **Subseções do Git** (`[remote "origin"]`): o nome da seção é o texto inteiro,
-  `remote "origin"`, com as aspas; dá para editar as chaves, mas o km-conf não sabe
+  `remote "origin"`, com as aspas; dá para editar as chaves, mas o Konfig não sabe
   que é a subseção `origin` de `remote`. Chaves repetidas do Git (`fetch` várias
-  vezes) são recusadas, e o `.gitconfig` não é associado ao km-conf.
+  vezes) são recusadas, e o `.gitconfig` não é associado ao Konfig.
 - **Chave sem valor** (`skip-networking` do `my.cnf`, `allow_no_value` do Python):
   recusada como linha que não é par.
 - **Escapes** em aspas duplas (`\"`, `\n`, `${VAR}` do PHP dentro de aspas): ficam
-  como estão no texto (o PHP expande alguns; o km-conf mostra o texto cru).
+  como estão no texto (o PHP expande alguns; o Konfig mostra o texto cru).
 
 ### YAML
 
 #### Subconjunto aceito
 
 A norma YAML 1.2 completa (âncoras, etiquetas de tipo, vários documentos num arquivo, chaves
-complexas) seria um projeto maior que o resto do app. O km-conf lê o subconjunto que aparece em
+complexas) seria um projeto maior que o resto do app. O Konfig lê o subconjunto que aparece em
 arquivos de configuração:
 
 - **Um documento por arquivo**, com `---` opcional no começo e `...` opcional no fim (depois do
@@ -467,7 +469,7 @@ Um valor sem aspas tem o tipo que o *core schema* do YAML 1.2 diz, e só esses:
 | todo o resto: `yes`, `no`, `on`, `off`, `y`, `n`, `0b101`, `1_000`, `12:30`, `2024-01-31`… | texto |
 
 Entre aspas ou em bloco, é sempre texto. Por que o 1.2 e não o 1.1: é a versão atual da norma
-(2009), a que o próprio YAML recomenda e a que a yaml-test-suite usa; o km-conf não tem como saber
+(2009), a que o próprio YAML recomenda e a que a yaml-test-suite usa; o Konfig não tem como saber
 qual programa vai ler o arquivo, e o 1.2 é o que muda menos o que está escrito (`no` continua
 `no`). Datas não existem no 1.2: `2024-01-31` é texto.
 
@@ -478,7 +480,7 @@ docker-compose em Python; o `yaml.v2` do Go; o Psych do Ruby): para eles `no`, `
 **falso**, `on` e `yes` são verdadeiro, `010` é **oito** (octal), `1_000` é mil, `12:30` é 750
 (sexagesimal), `2024-01-31` é uma data. É o caso clássico da Noruega: `pais: NO` vira `pais: false`.
 
-Por isso, **ao gravar um texto sem aspas**, o km-conf põe aspas duplas quando o texto seria lido
+Por isso, **ao gravar um texto sem aspas**, o Konfig põe aspas duplas quando o texto seria lido
 como outro tipo pelo YAML 1.2 **ou** pelo 1.1, mesmo que no 1.2 ele já seja texto:
 
 - sim/não e nulo do 1.1, em qualquer caixa: `y`, `n`, `yes`, `no`, `on`, `off`, `true`, `false`, `null`, `~`, vazio;
@@ -488,7 +490,7 @@ como outro tipo pelo YAML 1.2 **ou** pelo 1.1, mesmo que no 1.2 ele já seja tex
 - `.inf`, `-.inf`, `.nan`, datas (`2024-01-31…`), `<<` e `=`.
 
 A regra é de propósito larga: aspas a mais não mudam o valor para ninguém; aspas a menos mudam o
-tipo em algum programa. Ela vale só para o texto **gravado pelo km-conf**: um `pais: no` que já está
+tipo em algum programa. Ela vale só para o texto **gravado pelo Konfig**: um `pais: no` que já está
 no arquivo é lido como texto (YAML 1.2) e não é tocado se o campo não for editado.
 
 #### Fora do subconjunto: abre só no modo Texto
@@ -497,7 +499,7 @@ no arquivo é lido como texto (YAML 1.2) e não é tocado se o campo não for ed
 vários documentos no arquivo, chaves complexas (`? chave`, `[a, b]: x`), chave vazia ou nula
 (`: x`, `~: x`) e diretivas (`%YAML`, `%TAG`) ficam de fora. Um arquivo com qualquer um deles **abre
 só no modo Texto**, com o aviso dizendo o que não é aceito e em que linha (por exemplo "linha 3:
-âncora (&) está fora do subconjunto que o km-conf edita pelo formulário"). O formulário fica
+âncora (&) está fora do subconjunto que o Konfig edita pelo formulário"). O formulário fica
 indisponível; o texto pode ser editado e salvo, e é gravado como está (com o `.bak`), sem a
 releitura e conferência que o formulário faz. Se o texto ficar dentro do subconjunto, o formulário
 volta a funcionar; erro de sintaxe de verdade continua impedindo aplicar e salvar.
@@ -586,7 +588,7 @@ Sources/ConfCore/      leitores, modelo e gravação (sem interface)
   Campos.swift         estrutura → seções e campos da tela
   Edicao.swift         estado de um arquivo aberto; diferença por linhas
   Modelo.swift         tipos (Valor, DataHora, Entrada, DocumentoConf, …)
-Sources/km-conf/       o app (NSDocument + SwiftUI)
+Sources/Konfig/       o app (NSDocument + SwiftUI)
 Tests/ConfCoreTests/   suítes toml-test, JSONTestSuite e json5-tests (Fixtures/,
                        licença MIT), tsconfig.json de exemplo, arquivos JSONC
                        (Fixtures/jsonc/), .env (Fixtures/env/), INI (Fixtures/ini/:
@@ -606,14 +608,14 @@ exemplos/config.yaml   (no estilo de um docker-compose)
 ### Diagnóstico sem teclado
 
 ```sh
-KM_CONF_AUTOTESTE="/tmp/x/config.toml|/tmp/x/saida" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.json|/tmp/x/saida-json" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-jsonc" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/settings.jsonc|/tmp/x/saida-settings" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.json5|/tmp/x/saida-json5" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.ini|/tmp/x/saida-ini" km-conf.app/Contents/MacOS/km-conf
-KM_CONF_AUTOTESTE="/tmp/x/config.yaml|/tmp/x/saida-yaml" km-conf.app/Contents/MacOS/km-conf
+KONFIG_AUTOTESTE="/tmp/x/config.toml|/tmp/x/saida" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/config.json|/tmp/x/saida-json" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/config.jsonc|/tmp/x/saida-jsonc" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/settings.jsonc|/tmp/x/saida-settings" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/config.json5|/tmp/x/saida-json5" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/.env|/tmp/x/saida-env" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/config.ini|/tmp/x/saida-ini" Konfig.app/Contents/MacOS/Konfig
+KONFIG_AUTOTESTE="/tmp/x/config.yaml|/tmp/x/saida-yaml" Konfig.app/Contents/MacOS/Konfig
 ```
 
 O arquivo precisa ser uma cópia de `exemplos/config.toml`, `exemplos/config.json`,
@@ -628,3 +630,19 @@ linha nova e nada mais) e desfaz; uma cópia do `config.ini` chamada `.editorcon
 confere que o ⌘S mantém o nome (não grava `.editorconfig.ini`). No YAML, faz o mesmo com a lista
 em bloco `services.web.ports` e confere que um texto com âncora dá aviso de "fora do subconjunto"
 (não erro) no modo Texto.
+
+## Vindo do km-conf
+
+Até 11/10/2026 o app se chamava km-conf, com o identificador `br.com.kogut.km-conf`; agora é
+`br.com.kogut.konfig`, e os tipos `.jsonc`, `.json5`, `.env` e `.ini` passaram a
+`br.com.kogut.konfig.*`. Na primeira abertura, o Konfig copia as preferências guardadas pelo
+identificador antigo (posição e tamanho da janela, última pasta do painel de abrir). Não passam,
+porque o macOS os guarda por identificador fora das preferências: a lista de **Abrir Recente** e
+as associações feitas com **Alterar Tudo…** no Finder (refaça-as escolhendo o Konfig). Um
+`km-conf.app` antigo pode ser apagado; enquanto existir, aparece também em "Abrir com".
+
+## Licença
+
+[MIT](LICENSE), © 2026 Kogumelo Informática Ltda. Use, copie e modifique à
+vontade, mantendo o aviso de copyright. O código vem sem garantia. Os casos de teste
+de terceiros em `Tests/ConfCoreTests/Fixtures/` têm a licença de origem ao lado.

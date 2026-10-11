@@ -8,6 +8,7 @@ enum App {
     static let delegado = Delegado()
 
     static func main() {
+        Migracao.preferenciasDoNomeAntigo()
         // O primeiro NSDocumentController criado vira o `shared`.
         _ = ControladorDocumentos()
         let app = NSApplication.shared
@@ -18,18 +19,41 @@ enum App {
     }
 }
 
+/// Até 11/10/2026 o app se chamava km-conf, com o bundle id `br.com.kogut.km-conf`. As
+/// preferências ficam guardadas pelo bundle id; na primeira abertura com o id novo, copia as
+/// do antigo (posição e tamanho da janela, última pasta do painel de abrir…). O domínio antigo
+/// fica como está. Os documentos recentes e o "Abrir com" do Finder não passam: o sistema os
+/// guarda por bundle id, fora das preferências.
+enum Migracao {
+    static let idAntigo = "br.com.kogut.km-conf"
+    static let janelaAntiga = "NSWindow Frame km-conf.janela"
+    static let janelaNova = "NSWindow Frame konfig.janela"
+
+    static func preferenciasDoNomeAntigo() {
+        let padrao = UserDefaults.standard
+        let marca = "migrouDoNomeAntigo"
+        guard !padrao.bool(forKey: marca) else { return }
+        defer { padrao.set(true, forKey: marca) }
+        guard let antigas = padrao.persistentDomain(forName: idAntigo) else { return }
+        for (chave, valor) in antigas {
+            let nova = chave == janelaAntiga ? janelaNova : chave
+            if padrao.object(forKey: nova) == nil { padrao.set(valor, forKey: nova) }
+        }
+    }
+}
+
 /// Decide o tipo do arquivo pelo nome. O macOS não declara `.jsonc`, `.json5`, `.env` nem `.ini` (dá a eles
 /// um tipo "dinâmico", e a um arquivo chamado só `.env`, `public.data`), e a declaração
 /// do `Info.plist` só vale depois que o app é registrado.
 final class ControladorDocumentos: NSDocumentController {
     override func typeForContents(of url: URL) throws -> String {
-        if url.pathExtension.lowercased() == "jsonc" { return "br.com.kogut.km-conf.jsonc" }
+        if url.pathExtension.lowercased() == "jsonc" { return "br.com.kogut.konfig.jsonc" }
         switch Formato(nomeArquivo: url.lastPathComponent) {
         case .toml?: return "public.toml"
         case .json?: return "public.json"
-        case .json5?: return "br.com.kogut.km-conf.json5"
-        case .env?: return "br.com.kogut.km-conf.env"
-        case .ini?: return "br.com.kogut.km-conf.ini"
+        case .json5?: return "br.com.kogut.konfig.json5"
+        case .env?: return "br.com.kogut.konfig.env"
+        case .ini?: return "br.com.kogut.konfig.ini"
         case .yaml?: return "public.yaml"
         case nil: return try super.typeForContents(of: url)
         }
@@ -54,9 +78,9 @@ extension Formato {
 @MainActor
 final class Delegado: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
-        // Caminhos passados na linha de comando (`open km-conf.app --args arquivo.toml`)
+        // Caminhos passados na linha de comando (`open Konfig.app --args arquivo.toml`)
         // o próprio AppKit abre como documentos.
-        if let v = ProcessInfo.processInfo.environment["KM_CONF_AUTOTESTE"] {
+        if let v = ProcessInfo.processInfo.environment["KONFIG_AUTOTESTE"] {
             let partes = v.split(separator: "|").map(String.init)
             if partes.count == 2 {
                 Autoteste.rodar(arquivo: URL(fileURLWithPath: partes[0]), saida: URL(fileURLWithPath: partes[1]))
@@ -98,7 +122,7 @@ enum Menu {
 
     static func principal() -> NSMenu {
         let principal = NSMenu()
-        let nome = "km-conf"
+        let nome = "Konfig"
 
         principal.addItem(submenu(nome, [
             item("Sobre o \(nome)", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
