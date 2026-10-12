@@ -128,14 +128,19 @@ struct Sidebar: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
-            if model.jsoncNotice {
-                Label(NSLocalizedString("JSON with comments", comment: "Sidebar notice"), systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .help(NSLocalizedString("This .json has comments or trailing commas (JSONC, like VS Code's settings.json and tsconfig.json). Konfig keeps everything when saving, but not every program that reads JSON accepts this file.", comment: "Sidebar notice help"))
+            VStack(alignment: .leading, spacing: 6) {
+                if model.jsoncNotice {
+                    Label(NSLocalizedString("JSON with comments", comment: "Sidebar notice"), systemImage: "info.circle")
+                        .help(NSLocalizedString("This .json has comments or trailing commas (JSONC, like VS Code's settings.json and tsconfig.json). Konfig keeps everything when saving, but not every program that reads JSON accepts this file.", comment: "Sidebar notice help"))
+                }
+                Text(Self.version)
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
             }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 6)
         }
         .overlay {
             if model.sections.isEmpty {
@@ -145,6 +150,15 @@ struct Sidebar: View {
             }
         }
     }
+
+    /// "Konfig 1.0 · cb55b12", from the Info.plist that build.sh fills in; just "Konfig" outside the bundle (`swift run`).
+    static let version: String = {
+        let info = Bundle.main.infoDictionary ?? [:]
+        var v = "Konfig"
+        if let n = info["CFBundleShortVersionString"] as? String { v += " \(n)" }
+        if let c = info["KonfigCommit"] as? String { v += " · \(c)" }
+        return v
+    }()
 
     func line(_ s: FormSection, icon: String?, title: String? = nil) -> some View {
         HStack {
