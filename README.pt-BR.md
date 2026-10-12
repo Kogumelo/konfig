@@ -50,6 +50,10 @@ em português (ver [Idiomas](#idiomas)).
 ```
 
 Gera `Konfig.app` nesta pasta, assinado localmente (`codesign --sign -`).
+`./build.sh --install` também troca o `/Applications/Konfig.app` — a cópia que o "Abrir com"
+do Finder usa — e o registra de novo, para o ícone e os tipos de documento seguirem o build novo.
+O rodapé da barra lateral mostra a versão e o commit de onde o build saiu (`-dirty` quando
+havia arquivo versionado com mudança não commitada).
 Precisa do Xcode (Swift 6) e roda no macOS 14 ou mais novo. O build em release
 demora alguns minutos.
 
@@ -206,7 +210,7 @@ JSON estrito não se ofereçam para abri-los. Os dois tipos têm prévia no Quic
 Finder não os associa ao Konfig; abra-os pelo `open -a`, pelo ⌘O do app ou
 arrastando para o ícone. Para associar uma extensão:
 
-1. Copie `Konfig.app` para `/Applications` (opcional, mas assim ele não depende desta pasta).
+1. Copie `Konfig.app` para `/Applications` (opcional, mas assim ele não depende desta pasta; `./build.sh --install` faz isso).
 2. No Finder, selecione um arquivo da extensão › Arquivo › Obter Informações (⌘I).
 3. Em "Abrir com", escolha Konfig e clique em **Alterar Tudo…**.
 
@@ -645,7 +649,8 @@ O código, os comentários e os identificadores estão em inglês.
 ```
 Package.swift
 Info.plist             do app (tipos de documento, CFBundleLocalizations)
-build.sh               confere as traduções, compila e monta o Konfig.app
+build.sh               confere as traduções, compila e monta o Konfig.app (--install: em /Applications)
+.claude/commands/      km-instalar: o botão de deploy do Kommand (testes, ./build.sh --install, conferência)
 Sources/ConfCore/      leitores, modelo e gravação (sem interface)
   Format.swift         TOML, JSON, JSON5, .env, INI ou YAML: qual leitor e qual escritor usar
   TOMLReader.swift     TOML 1.0 → estrutura, com intervalo de bytes de cada valor
