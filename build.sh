@@ -1,7 +1,15 @@
 #!/bin/zsh
 # Builds Konfig and assembles the .app bundle (ad-hoc signature, for local use).
+# --install: also replaces /Applications/Konfig.app, the copy Finder's "Open With" uses.
 set -e
 cd "$(dirname "$0")"
+
+install=false
+case "$1" in
+    "") ;;
+    --install) install=true ;;
+    *) echo "usage: $0 [--install]" >&2; exit 2 ;;
+esac
 
 # Every NSLocalizedString key in the source must be translated in every language.
 keys=$(grep -ho 'NSLocalizedString("[^"]*"' Sources/**/*.swift | cut -d'"' -f2 | sort -u)
@@ -31,5 +39,16 @@ cp icon/Konfig.icns "$APP/Contents/Resources/Konfig.icns"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 
-echo "OK: $PWD/$APP"
-echo "To open a file: open -a $PWD/$APP examples/config.toml"
+echo "OK: $PWD/$APP ($commit)"
+
+if $install; then
+    DEST=/Applications/Konfig.app
+    [[ -d "$DEST" ]] && rm -r "$DEST"
+    ditto "$APP" "$DEST"
+    # re-register: refreshes the icon and document types Launch Services had cached from the old copy
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$DEST"
+    echo "Installed: $DEST"
+    pgrep -xq Konfig && echo "Konfig is open: the old version keeps running until you quit it (⌘Q) and reopen it."
+else
+    echo "To open a file: open -a $PWD/$APP examples/config.toml"
+fi

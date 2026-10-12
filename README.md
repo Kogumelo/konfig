@@ -50,6 +50,10 @@ Portuguese (see [Localization](#localization)).
 ```
 
 Produces `Konfig.app` in this folder, signed locally (`codesign --sign -`).
+`./build.sh --install` also replaces `/Applications/Konfig.app` — the copy Finder's
+"Open With" uses — and re-registers it, so the icon and document types follow the new build.
+The sidebar footer shows the version and the commit the build came from (`-dirty` when
+tracked files had uncommitted changes).
 Requires Xcode (Swift 6) and runs on macOS 14 or later. The release build
 takes a few minutes.
 
@@ -206,7 +210,7 @@ strict JSON do not offer to open them. Both types have a Quick Look preview. The
 Finder does not associate them with Konfig; open them with `open -a`, with the app's ⌘O or
 by dragging onto the icon. To associate an extension:
 
-1. Copy `Konfig.app` to `/Applications` (optional, but then it does not depend on this folder).
+1. Copy `Konfig.app` to `/Applications` (optional, but then it does not depend on this folder; `./build.sh --install` does it).
 2. In the Finder, select a file with that extension › File › Get Info (⌘I).
 3. Under "Open with", choose Konfig and click **Change All…**.
 
@@ -645,7 +649,8 @@ Code, comments and identifiers are in English.
 ```
 Package.swift
 Info.plist             the app's (document types, CFBundleLocalizations)
-build.sh               checks the translations, builds and assembles Konfig.app
+build.sh               checks the translations, builds and assembles Konfig.app (--install: into /Applications)
+.claude/commands/      km-instalar: the Kommand deploy button (tests, ./build.sh --install, checks)
 Sources/ConfCore/      parsers, model and writing (no user interface)
   Format.swift         TOML, JSON, JSON5, .env, INI or YAML: which parser and which writer to use
   TOMLReader.swift     TOML 1.0 → structure, with the byte range of each value
