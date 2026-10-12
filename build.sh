@@ -19,6 +19,11 @@ BIN="$(swift build -c release --show-bin-path)/Konfig"
 APP=Konfig.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp Info.plist "$APP/Contents/Info.plist"
+# build number = commit count; KonfigCommit = short hash (+ "-dirty" when tracked files differ from it), shown in the sidebar
+commit="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+git diff --quiet HEAD 2>/dev/null || commit="$commit-dirty"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(git rev-list --count HEAD 2>/dev/null || echo 1)" \
+    -c "Add :KonfigCommit string $commit" "$APP/Contents/Info.plist"
 cp "$BIN" "$APP/Contents/MacOS/Konfig"
 # app icon: generated from icon/konfig.svg by icon/make-icon.sh
 cp icon/Konfig.icns "$APP/Contents/Resources/Konfig.icns"
